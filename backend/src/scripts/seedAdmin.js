@@ -18,7 +18,7 @@ const createTestUser = async () => {
         const testUser = {
             name: 'Admin',
             email: 'admin@adventz.com',
-            password: 'hr@1234',
+            password: 'admin@1234',
             role: "admin",
             entity: "Zuari Industries Limited"
         };
