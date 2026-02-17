@@ -46,7 +46,6 @@ function splitIntoBlocks(text, maxWords = 1500) {
 }
 
 export default async function generateChunks(rawText) {
-  console.log("rawText", rawText);
 
   if (!rawText || rawText.trim().length < 50) {
     return [];

@@ -66,13 +66,7 @@ const generateAIResponse = async (messages, userEntity) => {
             try {
                 const searchResults = await searchPolicy(query, userEntity);
                 if (searchResults && searchResults.length > 0) {
-                    console.log("\n=== CONTEXT CHUNKS PASSED TO LLM ===");
-                    searchResults.forEach((chunk, index) => {
-                        console.log(`\n[CHUNK ${index + 1}] Source: ${chunk.policy}`);
-                        console.log(`Content:\n${chunk.content}`);
-                        console.log(`-----------------------------------`);
-                    });
-                    console.log("====================================\n");
+        
                     policyText = searchResults.map(r =>
                         `--- DOCUMENT: ${r.policy} ---\n${r.content}\n--- END DOCUMENT ---\n`
                     ).join("\n");

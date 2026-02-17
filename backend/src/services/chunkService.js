@@ -125,7 +125,6 @@ export const publishPolicy = async (policyId) => {
 
 
 
-        console.log("Publishing rows (without vector):", rows.map(({ vector, ...rest }) => rest));
 
         // Delete existing chunks for this policy before adding new ones to avoid duplicates
         await deleteChunks(policy.title, policy.entity);
@@ -157,7 +156,6 @@ export const deleteChunks = async (policyTitle, entity) => {
 
         // Delete where policy AND entity match
         await table.delete(`policy = '${safeTitle}' AND entity = '${safeEntity}'`);
-        console.log(`Deleted chunks for policy: ${policyTitle}, entity: ${entity}`);
         return true;
     } catch (error) {
         console.error(`Error deleting chunks for policy ${policyTitle}:`, error);
