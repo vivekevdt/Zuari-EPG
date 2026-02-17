@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getEntities, getPolicies } from "../../api";
+import { getEntities, getPolicies, getVectorDbData } from "../../api";
 
 const SuperAdminVectorDb = () => {
     const [data, setData] = useState([]);
@@ -52,28 +52,11 @@ const SuperAdminVectorDb = () => {
         setLoading(true);
         setError(null);
 
-        const API_URL = import.meta.env.VITE_BACKEND_URL || "";
-        let url = new URL(`${API_URL}/api/super-admin/vector-db`);
-        const params = new URLSearchParams();
-        if (selectedEntity) params.append("entity", selectedEntity);
-        if (selectedPolicy) params.append("policy", selectedPolicy);
-        url.search = params.toString();
+        const filters = {};
+        if (selectedEntity) filters.entity = selectedEntity;
+        if (selectedPolicy) filters.policy = selectedPolicy;
 
-        const userInfo = localStorage.getItem('userInfo');
-        const token = userInfo ? JSON.parse(userInfo).token : null;
-
-        fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Network response was not ok");
-                }
-                return res.json();
-            })
+        getVectorDbData(filters)
             .then((data) => {
                 setData(data.data || []);
                 setDbSize(data.dbSize || 'Unknown');

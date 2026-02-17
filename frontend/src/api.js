@@ -413,3 +413,21 @@ export const deletePolicy = async (id) => {
         throw error;
     }
 };
+
+export const getVectorDbData = async (filters) => {
+    try {
+        const queryParams = new URLSearchParams(filters).toString();
+        const response = await fetch(`${API_URL}/api/super-admin/vector-db?${queryParams}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch vector db data');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
+
