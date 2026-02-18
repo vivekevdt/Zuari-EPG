@@ -31,6 +31,19 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       default: "user"
+    },
+    level: {
+      type: String,
+      default: ""
+    },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active"
+    },
+    entity_code: {
+      type: String,
+      default: ""
     }
   },
   { timestamps: true }
