@@ -5,6 +5,11 @@ import Policy from '../models/Policy.js';
 import Log from '../models/Log.js';
 // We will need a service to handle chunking logic, but for now we can simulate or create a placeholder
 import { processPolicyFile, publishPolicy as publishPolicyService, deleteChunks } from '../services/chunkService.js';
+import XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import authService from '../services/authService.js';
 
 
 // @desc    Get Admin Dashboard Statistics
@@ -573,6 +578,113 @@ const getLogs = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
+}
+
+
+// @desc    Download employee CSV template
+// @route   GET /api/admin/download-template
+// @access  Private/Admin
+const downloadEmployeeTemplate = async (req, res, next) => {
+    try {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const file = path.join(__dirname, '../../uploads/csv_template/template.xlsx');
+        res.download(file);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Upload employees via CSV
+// @route   POST /api/admin/upload-employees
+// @access  Private/Admin
+const uploadEmployees = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            res.status(400);
+            return next(new Error('Please upload a file'));
+        }
+
+        // Use XLSX to read the file (supports both .xlsx and .csv)
+        const workbook = XLSX.readFile(req.file.path);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        // Convert sheet to JSON
+        // format uses headers from first row
+        const results = XLSX.utils.sheet_to_json(worksheet);
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        // Clean up file immediately after reading
+        try {
+            fs.unlinkSync(req.file.path);
+        } catch (e) {
+            console.error("Error deleting temp file", e);
+        }
+
+        if (results.length === 0) {
+            res.status(200).json({
+                success: true,
+                message: "No records found in the file",
+                errors: ["File appears to be empty or effectively empty"]
+            });
+            return;
+        }
+
+        for (const row of results) {
+            try {
+                // Normalize keys to lower case to handle "Full Name" vs "full_name" vs "Name"
+                const normalizedRow = {};
+                Object.keys(row).forEach(key => {
+                    normalizedRow[key.trim().toLowerCase().replace(/ /g, '_')] = row[key];
+                });
+
+                // Map columns to User model fields
+                // Possible variations based on common template usage
+                const name = normalizedRow.full_name || normalizedRow.name || normalizedRow.employee_name;
+                const email = normalizedRow.email || normalizedRow.email_address;
+                const role = (normalizedRow.role || 'user').toLowerCase();
+                const entity = normalizedRow.entity_name || normalizedRow.entity || normalizedRow.company;
+                const level = normalizedRow.employee_level || normalizedRow.level || normalizedRow.grade;
+                const status = (normalizedRow.status || 'active').toLowerCase();
+                const entity_code = normalizedRow.entity_code || normalizedRow.code;
+                const password = normalizedRow.password || 'Welcome@1234';
+
+                if (!email || !name || !entity) {
+                    errorCount++;
+                    // Only push error if it's not a completely empty row (xlsx sometimes reads empty bottom rows)
+                    if (Object.keys(normalizedRow).length > 0) {
+                        errors.push(`Missing required fields (Name, Email, Entity) for row: ${JSON.stringify(row)}`);
+                    }
+                    continue;
+                }
+
+                // calling authService to register (handles hashing and duplicates)
+                await authService.registerUser(name, email, password, role, entity, level, status, entity_code);
+                successCount++;
+
+            } catch (err) {
+                errorCount++;
+                errors.push(`Error processing ${row.email || 'unknown row'}: ${err.message}`);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Processed ${results.length} records. Created: ${successCount}. Failed: ${errorCount}`,
+            errors: errors.length > 0 ? errors : undefined
+        });
+
+    } catch (error) {
+        // Try to cleanup if error occurred before unlink
+        if (req.file && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (e) { }
+        }
+        next(error);
+    }
 };
 
 export {
@@ -585,6 +697,8 @@ export {
     createEntity,
     updateEntity,
     deleteEntity,
+    downloadEmployeeTemplate,
+    uploadEmployees,
     getPolicies,
     uploadPolicy,
     getLogs,

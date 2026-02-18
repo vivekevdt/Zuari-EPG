@@ -431,3 +431,51 @@ export const getVectorDbData = async (filters) => {
     }
 };
 
+export const downloadEmployeeTemplate = async () => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/download-template`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to download template');
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'employee_template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const uploadEmployees = async (file) => {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const userInfo = localStorage.getItem('userInfo');
+        const token = userInfo ? JSON.parse(userInfo).token : null;
+
+        const response = await fetch(`${API_URL}/api/admin/upload-employees`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to upload employees');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
+
