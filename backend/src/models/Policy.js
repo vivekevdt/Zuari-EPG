@@ -19,15 +19,34 @@ const policySchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        category: {
+            type: String, // e.g. 'HR - General', 'HR - Compensation'
+            default: 'General'
+        },
+        expiryDate: {
+            type: Date
+        },
         status: {
             type: String,
-            enum: ['pending', 'live', 'failed-please retry'],
+            enum: ['pending', 'live', 'draft', 'archived', 'failed-please retry'],
             default: 'pending'
         },
         ischunked: {
             type: Boolean,
             default: false
         },
+        version: {
+            type: String, // e.g. '1.0'
+            default: '1.0'
+        },
+        versions: [{
+            _id: false,
+            version: String,
+            updatedAt: Date,
+            changedBy: String,
+            changeNote: String,
+            filename: String
+        }],
         chunks: [{
 
             content: {
@@ -37,8 +56,8 @@ const policySchema = new mongoose.Schema(
             header: {
                 type: String,
                 required: true
-            },  
-           
+            },
+
         }]
     },
     { timestamps: true }

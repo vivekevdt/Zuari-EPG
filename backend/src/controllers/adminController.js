@@ -333,7 +333,7 @@ const uploadPolicy = async (req, res, next) => {
             throw new Error('Please upload a file');
         }
 
-        const { title, entity } = req.body;
+        const { title, entity, category, expiryDate } = req.body;
 
         if (!title || !entity) {
             res.status(400);
@@ -344,7 +344,9 @@ const uploadPolicy = async (req, res, next) => {
             title,
             filename: req.file.filename,
             entity,
-            status: 'pending' // Default status, AI processing logic would update this later
+            category: category || 'General',
+            expiryDate: expiryDate || null,
+            status: 'draft' // Default status changed to draft to match UI
         });
 
         res.status(201).json({
@@ -467,11 +469,38 @@ const updatePolicy = async (req, res, next) => {
         // Capture original values before update
         const oldTitle = policy.title;
         const oldEntity = policy.entity;
+        const currentVersion = policy.version || '1.0';
 
-        const { title, entity } = req.body;
+        const { title, entity, category, expiryDate, changeNote } = req.body;
+
+        // Create version history entry
+        const historyEntry = {
+            version: currentVersion,
+            updatedAt: new Date(),
+            changedBy: req.user.name || 'Admin', // Assuming req.user is populated by auth middleware
+            changeNote: changeNote || (req.file ? 'Updated document file' : 'Updated metadata'),
+            filename: policy.filename
+        };
+
+        // Push to history
+        if (!policy.versions) policy.versions = [];
+        policy.versions.push(historyEntry);
+
+        // Calculate next version
+        const versionParts = currentVersion.split('.').map(Number);
+        if (versionParts.length === 2) {
+            versionParts[1]++; // Increment minor version
+            policy.version = versionParts.join('.');
+        } else {
+            policy.version = (parseFloat(currentVersion) + 0.1).toFixed(1); // Fallback
+        }
+
 
         if (title) policy.title = title;
         if (entity) policy.entity = entity;
+        if (category) policy.category = category;
+        // Handle date properly, allowing clearing it if sent as null/empty
+        if (expiryDate !== undefined) policy.expiryDate = expiryDate;
 
         // If title or entity changed, delete old chunks from vector DB
         if ((title && title !== oldTitle) || (entity && entity !== oldEntity)) {
@@ -483,13 +512,6 @@ const updatePolicy = async (req, res, next) => {
         }
 
         if (req.file) {
-            // If file is updated, delete old chunks (based on old metadata - caught above or here if unchanged)
-            // But wait, if title/entity didn't change, we still want to remove old vectors as content changed!
-            // So let's delete chunks regardless if file changed OR metadata changed, to be safe.
-            // If we deleted above due to metadata change, this is redundant but harmless (delete is idempotent usually or handles not found).
-            // Actually, let's just do it once if ANY chance of inconsistency.
-            // Simplest logic: If update hits, wipe vectors. 
-
             // If file changed, we MUST wipe vectors because content is new.
             await deleteChunks(oldTitle, oldEntity);
 
@@ -497,26 +519,13 @@ const updatePolicy = async (req, res, next) => {
             // If file is updated, reset chunked status as content changed
             policy.ischunked = false;
             policy.chunks = []; // Clear existing chunks
-            policy.status = 'pending';
-        } else if ((title && title !== oldTitle) || (entity && entity !== oldEntity)) {
-            // If only metadata changed, we already deleted chunks above.
-            // Status set to 'chunked' so user can republish with new metadata.
+            policy.status = 'draft'; // Reset to draft on file change as shown in requirements usually
         }
-
-        // Clean up logic:
-        // 1. If File Changed: 
-        //      Delete Old Chunks (LanceDB)
-        //      Clear Chunks (Mongo)
-        //      Status = Pending
-        // 2. If Metadata Changed (but no file):
-        //      Delete Old Chunks (LanceDB)
-        //      Status = Chunked (vectors gone, but Mongo chunks preserved so just need republish)
-
 
         const updatedPolicy = await policy.save();
 
         await Log.create({
-            logDescription: `Policy Updated: ${updatedPolicy.title}`,
+            logDescription: `Policy Updated: ${updatedPolicy.title} to v${updatedPolicy.version}`,
             userId: req.user._id,
             name: req.user.name,
             role: req.user.role,

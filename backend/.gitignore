@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 # LanceDB (Vector Database) - Generated content
 
 /policy_db
+/uploads
