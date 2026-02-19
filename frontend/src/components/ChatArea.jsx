@@ -147,7 +147,7 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Ask the Policy Navigator anything..."
+                            placeholder="Ask your HR Assistant anything..."
                             className="w-full bg-[var(--input-bg)] backdrop-blur-xl shadow-[0_15px_50px_rgba(0,0,0,0.05)] border border-gray-100 dark:border-slate-700 rounded-[28px] py-6 pl-8 pr-20 outline-none text-base focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 transition-all text-[var(--text-main)]"
                         />
                         <button
@@ -159,7 +159,7 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                         </button>
                     </form>
                     <p className="text-[9px] text-gray-400 text-center mt-5 uppercase tracking-[0.4em] font-black opacity-40">
-                        Internal Support System &bull; Zuari Industries Limited
+                        Internal Support System &bull; AskHR
                     </p>
                 </div>
             </div>

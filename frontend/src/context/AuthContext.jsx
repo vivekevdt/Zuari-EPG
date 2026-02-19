@@ -20,6 +20,12 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const data = await loginAPI(email, password);
+
+            // Check if account is activated
+            if (data.is_account_activated === false) {
+                return data; // Return data but DO NOT log them in (no setUser, no localStorage)
+            }
+
             // data normally contains { _id, name, email, token }
             // We'll store it all in localStorage for now
             localStorage.setItem('userInfo', JSON.stringify(data));

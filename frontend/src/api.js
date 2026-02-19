@@ -19,6 +19,44 @@ export const loginUser = async (email, password) => {
     }
 };
 
+export const activateAccount = async (email, currentPassword, newPassword) => {
+    try {
+        const response = await fetch(`${API_URL}/api/auth/activate-account`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, currentPassword, newPassword }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Activation failed');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const forgotPassword = async (email) => {
+    try {
+        const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Forgot password failed');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 const getAuthHeaders = () => {
     const userInfo = localStorage.getItem('userInfo');
     if (userInfo) {
@@ -249,6 +287,22 @@ export const getPolicies = async () => {
     }
 };
 
+export const getArchivedPolicies = async () => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/policies/archived`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch archived policies');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 // Publish policy
 // Publish policy
 export const publishPolicy = async (id) => {
@@ -409,6 +463,22 @@ export const deletePolicy = async (id) => {
             throw new Error(data.message || 'Failed to delete policy');
         }
         return data;
+    } catch (error) {
+        throw error;
+    }
+};
+export const playgroundChat = async (message, entity, policies) => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/playground/chat`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ message, entity, policies }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to get AI response');
+        }
+        return data.data.content;
     } catch (error) {
         throw error;
     }

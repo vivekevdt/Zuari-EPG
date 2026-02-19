@@ -8,7 +8,7 @@ const AdminEmployees = () => {
     const [employees, setEmployees] = useState([]);
     const [entities, setEntities] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [creationMode, setCreationMode] = useState('manual'); // 'manual' or 'bulk'
+    const [creationMode, setCreationMode] = useState(null); // 'manual', 'bulk', or null
     const [uploadFile, setUploadFile] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
@@ -27,17 +27,32 @@ const AdminEmployees = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [employeeToDelete, setEmployeeToDelete] = useState(null);
 
+    // Hardcoded Entity List
+    const AVAILABLE_ENTITIES = [
+        { code: 'ZIL', name: 'Zuari Industries Ltd' },
+        { code: 'ZIIL', name: 'Zuari Infraworld India Ltd' },
+        { code: 'SIL', name: 'Simon India Ltd' },
+        { code: 'ZIntL', name: 'Zuari International' },
+        { code: 'ZFL', name: 'Zuari Finserv Ltd' },
+        { code: 'ZIBL', name: 'Zuari Insurance Brokers Ltd' },
+        { code: 'ZMSL', name: 'Zuari Management Services Ltd' },
+        { code: 'FFPL', name: 'Forte Furniture Products India Pvt Ltd' },
+        { code: 'IFPL', name: 'Indian Furniture Private Ltd' },
+        { code: 'ZEBPL', name: 'Zuari Envien Bioenergy Pvt Ltd' }
+    ];
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [usersData, entitiesData] = await Promise.all([
-                    getAdminUsers(),
-                    getEntities()
-                ]);
+                const usersData = await getAdminUsers();
                 setEmployees(usersData);
-                setEntities(entitiesData);
-                if (entitiesData.length > 0) {
-                    setFormData(prev => ({ ...prev, entity: entitiesData[0].name }));
+                // We default to the first available entity if desired, or empty
+                if (AVAILABLE_ENTITIES.length > 0) {
+                    setFormData(prev => ({
+                        ...prev,
+                        entity: AVAILABLE_ENTITIES[0].name,
+                        entity_code: AVAILABLE_ENTITIES[0].code
+                    }));
                 }
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -49,20 +64,28 @@ const AdminEmployees = () => {
     }, []);
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData(prev => {
+            const updates = { ...prev, [name]: value };
+            // Auto-set entity code when entity changes
+            if (name === 'entity') {
+                const selectedEntity = AVAILABLE_ENTITIES.find(ent => ent.name === value);
+                if (selectedEntity) {
+                    updates.entity_code = selectedEntity.code;
+                }
+            }
+            return updates;
+        });
     };
 
     const handleCreateEmployee = async (e) => {
         e.preventDefault();
         if (!formData.name || !formData.email || !formData.entity) {
-            toast.error("Please fill all fields (Password is optional for editing)");
+            toast.error("Please fill all fields");
             return;
         }
 
-        if (!isEditing && !formData.password) {
-            toast.error("Password is required for new employees");
-            return;
-        }
+        // Default password logic is applied during creation
 
         setIsSubmitting(true);
         try {
@@ -71,15 +94,14 @@ const AdminEmployees = () => {
                     name: formData.name,
                     email: formData.email,
                     entity: formData.entity,
-                    ...(formData.password ? { password: formData.password } : {})
+                    // Password update not supported in this form anymore
                 });
             } else {
                 await createUser({
                     name: formData.name,
                     email: formData.email,
-                    password: formData.password,
+                    role: 'user', // Default role
                     entity: formData.entity,
-                    role: 'user',
                     level: formData.level,
                     status: formData.status,
                     entity_code: formData.entity_code
@@ -204,197 +226,183 @@ const AdminEmployees = () => {
                 </div>
             </div>
 
-            {/* Add New Member Form */}
-            <div className="w-full">
-                <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700 h-full">
-                    <div className="flex gap-4 mb-6">
+            {/* Action Tabs */}
+            <div className="flex gap-4">
+                <button
+                    onClick={() => { setCreationMode('manual'); setIsEditing(false); }}
+                    className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all ${creationMode === 'manual' || isEditing ? 'bg-zuari-navy text-white shadow-lg shadow-blue-900/20' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
+                >
+                    Manual Creation
+                </button>
+                <button
+                    onClick={() => { setCreationMode('bulk'); setIsEditing(false); }}
+                    className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all ${creationMode === 'bulk' ? 'bg-zuari-navy text-white shadow-lg shadow-blue-900/20' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
+                >
+                    Bulk Upload
+                </button>
+            </div>
+
+            {/* Form Container */}
+            {(creationMode || isEditing) && (
+                <div className="w-full">
+                    <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700 h-full relative animate-up">
                         <button
-                            onClick={() => setCreationMode('manual')}
-                            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${creationMode === 'manual' ? 'bg-zuari-navy text-white shadow-lg shadow-blue-900/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-400'}`}
+                            onClick={() => { setCreationMode(null); setIsEditing(false); }}
+                            className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-gray-600 transition-colors"
                         >
-                            Manual Creation
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
-                        {!isEditing && (
-                            <button
-                                onClick={() => setCreationMode('bulk')}
-                                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${creationMode === 'bulk' ? 'bg-zuari-navy text-white shadow-lg shadow-blue-900/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-400'}`}
-                            >
-                                Bulk Upload
-                            </button>
-                        )}
-                    </div>
 
-                    {creationMode === 'manual' || isEditing ? (
-                        <>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6">{isEditing ? 'Edit Member' : 'Fill Details'}</h3>
-                            <form onSubmit={handleCreateEmployee} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Full Name</label>
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleChange}
-                                            placeholder="Ex. Jane Doe"
-                                            className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Work Email</label>
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            placeholder="jane@zuari.com"
-                                            className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{isEditing ? 'New Password' : 'Initial Password'}</label>
-                                        <input
-                                            type="password"
-                                            name="password"
-                                            value={formData.password}
-                                            onChange={handleChange}
-                                            placeholder="••••••••"
-                                            className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Assign Entity</label>
-                                        <div className="relative">
-                                            <select
-                                                name="entity"
-                                                value={formData.entity}
+                        {creationMode === 'manual' || isEditing ? (
+                            <>
+                                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6">{isEditing ? 'Edit Member' : 'Fill Details'}</h3>
+                                <form onSubmit={handleCreateEmployee} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Full Name</label>
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                value={formData.name}
                                                 onChange={handleChange}
-                                                className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none cursor-pointer"
-                                            >
-                                                <option value="" disabled>Select Entity</option>
-                                                {entities.map(ent => (
-                                                    <option key={ent._id} value={ent.name}>{ent.name}</option>
-                                                ))}
-                                            </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                placeholder="Ex. Jane Doe"
+                                                className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Work Email</label>
+                                            <input
+                                                type="email"
+                                                name="email"
+                                                value={formData.email}
+                                                onChange={handleChange}
+                                                placeholder="jane@zuari.com"
+                                                className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Assign Entity</label>
+                                            <div className="relative">
+                                                <select
+                                                    name="entity"
+                                                    value={formData.entity}
+                                                    onChange={handleChange}
+                                                    className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none cursor-pointer"
+                                                >
+                                                    <option value="" disabled>Select Entity</option>
+                                                    {AVAILABLE_ENTITIES.map(ent => (
+                                                        <option key={ent.code} value={ent.name}>{ent.name}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Level</label>
-                                        <input
-                                            type="text"
-                                            name="level"
-                                            value={formData.level}
-                                            onChange={handleChange}
-                                            placeholder="L3"
-                                            className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Entity Code</label>
-                                        <input
-                                            type="text"
-                                            name="entity_code"
-                                            value={formData.entity_code}
-                                            onChange={handleChange}
-                                            placeholder="HQ01"
-                                            className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
-                                        <div className="relative">
-                                            <select
-                                                name="status"
-                                                value={formData.status}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Level</label>
+                                            <input
+                                                type="text"
+                                                name="level"
+                                                value={formData.level}
                                                 onChange={handleChange}
-                                                className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none cursor-pointer"
-                                            >
-                                                <option value="active">Active</option>
-                                                <option value="inactive">Inactive</option>
-                                            </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                placeholder="L3"
+                                                className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
+                                            <div className="relative">
+                                                <select
+                                                    name="status"
+                                                    value={formData.status}
+                                                    onChange={handleChange}
+                                                    className="w-full p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none cursor-pointer"
+                                                >
+                                                    <option value="active">Active</option>
+                                                    <option value="inactive">Inactive</option>
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="flex gap-3 pt-2">
-                                    {isEditing && (
+                                    <div className="flex gap-3 pt-2">
+                                        {isEditing && (
+                                            <button
+                                                type="button"
+                                                onClick={handleCancelEdit}
+                                                className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 rounded-2xl font-bold transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
                                         <button
-                                            type="button"
-                                            onClick={handleCancelEdit}
-                                            className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 rounded-2xl font-bold transition-all"
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="flex-1 py-4 bg-zuari-navy hover:bg-[#122856] text-white rounded-2xl font-bold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all disabled:opacity-70"
                                         >
-                                            Cancel
+                                            {isSubmitting ? 'Saving...' : (isEditing ? 'Update Employee' : 'Create Employee')}
                                         </button>
-                                    )}
+                                    </div>
+                                </form>
+                            </>
+                        ) : (
+                            <div className="text-center flex flex-col items-center justify-center h-[70%] py-12">
+                                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-500">
+                                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Upload Employee CSV</h3>
+                                <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">Import your CSV file to update the database. Ensure required headers are present.</p>
+
+                                <input
+                                    type="file"
+                                    id="csvInput"
+                                    accept=".csv,.xlsx,.xls"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
+
+                                <div className="flex gap-4 w-full max-w-md mx-auto">
                                     <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="flex-1 py-4 bg-zuari-navy hover:bg-[#122856] text-white rounded-2xl font-bold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all disabled:opacity-70"
+                                        onClick={() => document.getElementById('csvInput').click()}
+                                        className="flex-1 py-3 bg-zuari-navy text-white rounded-2xl font-bold hover:bg-[#122856] transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
                                     >
-                                        {isSubmitting ? 'Saving...' : (isEditing ? 'Update Employee' : 'Create Employee')}
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                        {uploadFile ? uploadFile.name.substring(0, 15) + (uploadFile.name.length > 15 ? '...' : '') : 'Choose File'}
+                                    </button>
+                                    <button
+                                        onClick={downloadEmployeeTemplate}
+                                        className="flex-1 py-3 border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                        Template
                                     </button>
                                 </div>
-                            </form>
-                        </>
-                    ) : (
-                        <div className="text-center flex flex-col items-center justify-center h-[70%] py-12">
-                            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-500">
-                                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+
+                                {uploadFile && (
+                                    <button
+                                        onClick={handleUpload}
+                                        disabled={isSubmitting}
+                                        className="w-full max-w-md mx-auto mt-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-green-900/20 disabled:opacity-70"
+                                    >
+                                        {isSubmitting ? 'Uploading...' : 'Upload & Process'}
+                                    </button>
+                                )}
                             </div>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Upload Employee CSV</h3>
-                            <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">Import your CSV file to update the database. Ensure required headers are present.</p>
-
-                            <input
-                                type="file"
-                                id="csvInput"
-                                accept=".csv,.xlsx,.xls"
-                                className="hidden"
-                                onChange={handleFileChange}
-                            />
-
-                            <div className="flex gap-4 w-full max-w-md mx-auto">
-                                <button
-                                    onClick={() => document.getElementById('csvInput').click()}
-                                    className="flex-1 py-3 bg-zuari-navy text-white rounded-2xl font-bold hover:bg-[#122856] transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                                    {uploadFile ? uploadFile.name.substring(0, 15) + (uploadFile.name.length > 15 ? '...' : '') : 'Choose File'}
-                                </button>
-                                <button
-                                    onClick={downloadEmployeeTemplate}
-                                    className="flex-1 py-3 border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                    Template
-                                </button>
-                            </div>
-
-                            {uploadFile && (
-                                <button
-                                    onClick={handleUpload}
-                                    disabled={isSubmitting}
-                                    className="w-full max-w-md mx-auto mt-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-green-900/20 disabled:opacity-70"
-                                >
-                                    {isSubmitting ? 'Uploading...' : 'Upload & Process'}
-                                </button>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Active Employees List */}
             <div className="w-full">

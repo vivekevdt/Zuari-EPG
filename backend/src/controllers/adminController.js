@@ -217,23 +217,55 @@ const getEntities = async (req, res, next) => {
 const createEntity = async (req, res, next) => {
     try {
         const { name } = req.body;
+        let { entityCode } = req.body;
 
         if (!name) {
             res.status(400);
             throw new Error('Entity name is required');
         }
 
-        const existingEntity = await Entity.findOne({ name });
-        if (existingEntity) {
-            res.status(400);
-            throw new Error('Entity already exists');
+        // Hardcoded Entity Map
+        const entityMap = {
+            'Zuari Industries Ltd': 'ZIL',
+            'Zuari Infraworld India Ltd': 'ZIIL',
+            'Simon India Ltd': 'SIL',
+            'Zuari International': 'ZIntL',
+            'Zuari Finserv Ltd': 'ZFL',
+            'Zuari Insurance Brokers Ltd': 'ZIBL',
+            'Zuari Management Services Ltd': 'ZMSL',
+            'Forte Furniture Products India Pvt Ltd': 'FFPL',
+            'Indian Furniture Private Ltd': 'IFPL',
+            'Zuari Envien Bioenergy Pvt Ltd': 'ZEBPL'
+        };
+
+        // If entityCode not provided, try to look it up from map
+        if (!entityCode) {
+            entityCode = entityMap[name];
         }
 
-        const entity = await Entity.create({ name });
+        // If still no entityCode, we can either error or auto-generate/require it.
+        // For now, let's require it if not in map, or maybe allow null if schema allows (but schema required=true).
+        if (!entityCode) {
+            // Option: Generate from name initials? Or require user input.
+            // Let's return error asking for code if not found in map.
+            res.status(400);
+            throw new Error('Entity Code is required for unknown entities.');
+        }
+
+        const existingEntity = await Entity.findOne({
+            $or: [{ name }, { entityCode }]
+        });
+
+        if (existingEntity) {
+            res.status(400);
+            throw new Error('Entity with this Name or Code already exists');
+        }
+
+        const entity = await Entity.create({ name, entityCode });
 
         // Log Entity Creation
         await Log.create({
-            logDescription: `Entity Created: ${name}`,
+            logDescription: `Entity Created: ${name} (${entityCode})`,
             userId: req.user._id,
             name: req.user.name,
             role: req.user.role,
@@ -290,13 +322,37 @@ const updateEntity = async (req, res, next) => {
         const entity = await Entity.findById(req.params.id);
 
         if (entity) {
+            const oldName = entity.name;
             entity.name = req.body.name || entity.name;
+
+            // Hardcoded Entity Map
+            const entityMap = {
+                'Zuari Industries Ltd': 'ZIL',
+                'Zuari Infraworld India Ltd': 'ZIIL',
+                'Simon India Ltd': 'SIL',
+                'Zuari International': 'ZIntL',
+                'Zuari Finserv Ltd': 'ZFL',
+                'Zuari Insurance Brokers Ltd': 'ZIBL',
+                'Zuari Management Services Ltd': 'ZMSL',
+                'Forte Furniture Products India Pvt Ltd': 'FFPL',
+                'Indian Furniture Private Ltd': 'IFPL',
+                'Zuari Envien Bioenergy Pvt Ltd': 'ZEBPL'
+            };
+
+            // If name changed, try to update code from map
+            if (req.body.name && req.body.name !== oldName) {
+                if (entityMap[req.body.name]) {
+                    entity.entityCode = entityMap[req.body.name];
+                }
+                // If not in map, we keep the old code? Or do we want to force user to provide one?
+                // Current UI doesn't allow editing code. So we just leave it unless mapped.
+            }
 
             const updatedEntity = await entity.save();
 
             // Log Update
             await Log.create({
-                logDescription: `Entity Updated: ${updatedEntity.name}`,
+                logDescription: `Entity Updated: ${oldName} -> ${updatedEntity.name} (${updatedEntity.entityCode})`,
                 userId: req.user._id,
                 name: req.user.name,
                 role: req.user.role,
@@ -313,12 +369,27 @@ const updateEntity = async (req, res, next) => {
     }
 };
 
-// @desc    Get all policies
+// @desc    Get all active policies (excluding archived)
 // @route   GET /api/admin/policies
 // @access  Private/Admin
 const getPolicies = async (req, res, next) => {
     try {
-        const policies = await Policy.find().sort({ uploadDate: -1 });
+        const policies = await Policy.find({ status: { $ne: 'archived' } }).sort({ uploadDate: -1 });
+        res.status(200).json({
+            success: true,
+            data: policies
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get all archived policies
+// @route   GET /api/admin/policies/archived
+// @access  Private/Admin
+const getArchivedPolicies = async (req, res, next) => {
+    try {
+        const policies = await Policy.find({ status: 'archived' }).sort({ uploadDate: -1 });
         res.status(200).json({
             success: true,
             data: policies
@@ -490,6 +561,20 @@ const updatePolicy = async (req, res, next) => {
         // Push to history
         if (!policy.versions) policy.versions = [];
         policy.versions.push(historyEntry);
+
+        // ARCHIVE OLD VERSION: Create a new document for the archived version
+        await Policy.create({
+            title: `${oldTitle} (v${currentVersion})`,
+            filename: policy.filename, // keep old filename
+            entity: oldEntity,
+            category: policy.category,
+            uploadDate: policy.uploadDate,
+            expiryDate: policy.expiryDate,
+            status: 'archived', // Explicitly archived
+            version: currentVersion,
+            ischunked: policy.ischunked,
+            versions: [] // Archived versions start fresh or keep empty history
+        });
 
         // Calculate next version
         const versionParts = currentVersion.split('.').map(Number);
@@ -714,5 +799,6 @@ export {
     createChunks,
     deletePolicy,
     updatePolicy,
-    publishPolicy
+    publishPolicy,
+    getArchivedPolicies
 };

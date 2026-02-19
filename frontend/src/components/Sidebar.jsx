@@ -25,7 +25,15 @@ const Sidebar = ({
         >
             <div className="p-6">
                 <div className="flex items-center gap-3 mb-8 px-2">
-                    <img src="https://www.zuariindustries.in/assets/web/img/logo/zuari_logo.png" alt="Zuari" className="h-10 w-auto brightness-100 dark:brightness-0 dark:invert" />
+                    <div className="flex items-center gap-3 px-2 py-1">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zuari-navy to-blue-600 shadow-lg shadow-blue-900/20 flex items-center justify-center shrink-0">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        </div>
+                        <div className="flex flex-col">
+                            <h1 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-none">AskHR</h1>
+                            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">AI Policy Assistant</span>
+                        </div>
+                    </div>
                 </div>
 
                 <button

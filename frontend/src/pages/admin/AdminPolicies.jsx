@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
     getPolicies, getEntities, uploadPolicy,
+    getArchivedPolicies,
     chunkPolicy,
     publishPolicy,
     deletePolicy,
@@ -13,6 +14,7 @@ import ConfirmationModal from '../../components/ConfirmationModal';
 const AdminPolicies = () => {
     // Data State
     const [policies, setPolicies] = useState([]);
+    const [archivedPolicies, setArchivedPolicies] = useState([]);
     const [entities, setEntities] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -69,12 +71,14 @@ const AdminPolicies = () => {
 
     const fetchData = async () => {
         try {
-            const [policiesData, entitiesData] = await Promise.all([
+            const [policiesData, entitiesData, archivedData] = await Promise.all([
                 getPolicies(),
-                getEntities()
+                getEntities(),
+                getArchivedPolicies()
             ]);
             setPolicies(policiesData);
             setEntities(entitiesData);
+            setArchivedPolicies(archivedData);
             if (entitiesData.length > 0 && !uploadEntity) {
                 setUploadEntity(entitiesData[0].name);
             }
@@ -199,6 +203,15 @@ const AdminPolicies = () => {
 
     // Actions (Chunk, Publish)
     const handleAction = async (actionFn, id, actionName) => {
+        // Validation for Publishing
+        if (actionName === 'publishing') {
+            const policy = policies.find(p => p._id === id);
+            if (policy && !policy.ischunked) {
+                toast.error("Please create chunks before publishing.");
+                return;
+            }
+        }
+
         setActionLoading(prev => ({ ...prev, [id]: actionName }));
         try {
             await actionFn(id);
@@ -237,7 +250,7 @@ const AdminPolicies = () => {
         return matchesEntity && matchesCategory && matchesSearch;
     });
 
-    const archivedPolicies = policies.filter(p => p.status === 'archived'); // Assuming status logic exists
+
 
     return (
         <div className="space-y-8 animate-up relative min-h-screen">
@@ -691,7 +704,10 @@ const AdminPolicies = () => {
                                             <td className="py-4 px-6 text-sm text-gray-600">{policy.entity}</td>
                                             <td className="py-4 px-6 text-sm text-gray-600">{new Date(policy.uploadDate).toLocaleDateString()}</td>
                                             <td className="py-4 px-6 text-right">
-                                                <button className="text-sm font-bold text-gray-400 hover:text-blue-600 flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleDownloadPolicy(policy.filename)}
+                                                    className="text-sm font-bold text-gray-400 hover:text-blue-600 flex items-center justify-end gap-2"
+                                                >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                                     Download
                                                 </button>
