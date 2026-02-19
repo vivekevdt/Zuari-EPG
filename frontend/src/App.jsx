@@ -12,6 +12,7 @@ import AdminEmployees from './pages/admin/AdminEmployees';
 import SuperAdminLayout from './pages/superadmin/SuperAdminLayout';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminVectorDb from './pages/superadmin/SuperAdminVectorDb';
+import Playground from './pages/Playground';
 
 const SuperAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -89,6 +90,7 @@ function App() {
 
           <Route path="interactions" element={<AdminInteractions />} />
           <Route path="employees" element={<AdminEmployees />} />
+          <Route path="playground" element={<Playground />} />
         </Route>
 
         {/* Super Admin Routes */}
@@ -100,6 +102,7 @@ function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<SuperAdminDashboard />} />
           <Route path="vector-db" element={<SuperAdminVectorDb />} />
+          <Route path="playground" element={<Playground />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

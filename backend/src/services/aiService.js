@@ -66,7 +66,7 @@ const generateAIResponse = async (messages, userEntity) => {
             try {
                 const searchResults = await searchPolicy(query, userEntity);
                 if (searchResults && searchResults.length > 0) {
-        
+
                     policyText = searchResults.map(r =>
                         `--- DOCUMENT: ${r.policy} ---\n${r.content}\n--- END DOCUMENT ---\n`
                     ).join("\n");

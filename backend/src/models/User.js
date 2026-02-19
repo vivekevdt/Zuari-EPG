@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    is_account_activated: {
+      type: Boolean,
+      default: false
+    },
 
     role: {
       type: String,

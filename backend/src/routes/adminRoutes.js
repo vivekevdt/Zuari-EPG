@@ -19,8 +19,11 @@ import {
     updatePolicy,
     publishPolicy,
     downloadEmployeeTemplate,
-    uploadEmployees
+    uploadEmployees,
+    getArchivedPolicies
 } from '../controllers/adminController.js';
+
+import { handlePlaygroundChat } from '../controllers/playground/playgroundController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 // Admin middleware to ensure user is admin
@@ -108,6 +111,7 @@ router.put('/entities/:id', protect, admin, updateEntity);
 router.delete('/entities/:id', protect, admin, deleteEntity);
 
 // Policy Management
+router.get('/policies/archived', protect, admin, getArchivedPolicies);
 router.get('/policies', protect, admin, getPolicies);
 router.post('/upload-policy', protect, admin, upload.single('policyDocument'), uploadPolicy);
 router.put('/policies/:id', protect, admin, upload.single('policyDocument'), updatePolicy);
@@ -117,5 +121,8 @@ router.delete('/policies/:id', protect, admin, deletePolicy);
 
 // Logs
 router.get('/logs', protect, admin, getLogs);
+
+// Playground Chat (New Separate Route)
+router.post('/playground/chat', protect, admin, handlePlaygroundChat);
 
 export default router;

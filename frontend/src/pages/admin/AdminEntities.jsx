@@ -87,6 +87,20 @@ const AdminEntities = () => {
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading entities...</div>;
 
+    // Hardcoded Entity List
+    const AVAILABLE_ENTITIES = [
+        { code: 'ZIL', name: 'Zuari Industries Ltd' },
+        { code: 'ZIIL', name: 'Zuari Infraworld India Ltd' },
+        { code: 'SIL', name: 'Simon India Ltd' },
+        { code: 'ZIntL', name: 'Zuari International' },
+        { code: 'ZFL', name: 'Zuari Finserv Ltd' },
+        { code: 'ZIBL', name: 'Zuari Insurance Brokers Ltd' },
+        { code: 'ZMSL', name: 'Zuari Management Services Ltd' },
+        { code: 'FFPL', name: 'Forte Furniture Products India Pvt Ltd' },
+        { code: 'IFPL', name: 'Indian Furniture Private Ltd' },
+        { code: 'ZEBPL', name: 'Zuari Envien Bioenergy Pvt Ltd' }
+    ];
+
     return (
         <div className="space-y-8 animate-up">
             <ConfirmationModal
@@ -108,14 +122,25 @@ const AdminEntities = () => {
                     </h3>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Entity Name</label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="Ex. Adventz"
-                                className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-                            />
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Select Entity</label>
+                            <div className="relative">
+                                <select
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none"
+                                >
+                                    <option value="">-- Select an Entity --</option>
+                                    {AVAILABLE_ENTITIES.map((entity) => (
+                                        <option key={entity.code} value={entity.name}>
+                                            {entity.name} ({entity.code})
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                            <p className="mt-2 text-xs text-gray-400">Entities are predefined with linked codes.</p>
                         </div>
 
                         <div className="flex gap-3">
@@ -146,13 +171,15 @@ const AdminEntities = () => {
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-slate-700">
-                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Name</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Code</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Entity Name</th>
                                     <th className="text-right py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                 {entities.map((entity) => (
                                     <tr key={entity._id} className="group hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                                        <td className="py-4 px-4 font-mono text-sm font-bold text-blue-600 bg-blue-50/50 rounded-lg">{entity.entityCode || '-'}</td>
                                         <td className="py-4 px-4 font-bold text-gray-800 dark:text-gray-200">{entity.name}</td>
                                         <td className="py-4 px-4 text-right">
                                             <button
