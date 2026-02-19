@@ -33,14 +33,14 @@ const authUser = async (req, res, next) => {
 // @access  Public
 const registerUser = async (req, res, next) => {
     try {
-        const { name, email, password, role, entity } = req.body;
+        const { name, email, password, role, entity, level, status, entity_code } = req.body;
 
         if (!name || !email || !password) {
             res.status(400);
             throw new Error('Please provide all fields');
         }
 
-        const userData = await authService.registerUser(name, email, password, role, entity);
+        const userData = await authService.registerUser(name, email, password, role, entity, level, status, entity_code);
 
         // Log Registration
         await createLog(userData._id, userData.name, userData.role, userData.entity, 'User Registered');

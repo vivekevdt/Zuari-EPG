@@ -17,7 +17,9 @@ import {
     createChunks,
     deletePolicy,
     updatePolicy,
-    publishPolicy
+    publishPolicy,
+    downloadEmployeeTemplate,
+    uploadEmployees
 } from '../controllers/adminController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -57,6 +59,31 @@ const upload = multer({
     }
 });
 
+// Configure Multer for CSV/Excel uploads
+const storageCsv = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const uploadCsv = multer({
+    storage: storageCsv,
+    fileFilter: function (req, file, cb) {
+        const filetypes = /csv|xlsx|xls/;
+        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+        if (extname) {
+            return cb(null, true);
+        } else {
+            cb('Error: CSV or Excel Files Only!');
+        }
+    }
+});
+
 const router = express.Router();
 
 // Dashboard Stats
@@ -64,6 +91,8 @@ router.get('/dashboard-stats', protect, admin, getDashboardStats);
 
 // User Management
 router.get('/users', protect, admin, getUsers);
+router.get('/download-template', protect, admin, downloadEmployeeTemplate);
+router.post('/upload-employees', protect, admin, uploadCsv.single('file'), uploadEmployees);
 router.put('/users/:id', protect, admin, updateUser);
 router.delete('/users/:id', protect, admin, deleteUser);
 
