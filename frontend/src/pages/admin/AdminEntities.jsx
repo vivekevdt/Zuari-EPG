@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { getEntities, createEntity, deleteEntity, updateEntity } from '../../api';
+import { getEntities, deleteEntity, updateEntity } from '../../api';
 
 import ConfirmationModal from '../../components/ConfirmationModal';
 
@@ -40,9 +40,6 @@ const AdminEntities = () => {
             if (isEditing) {
                 await updateEntity(editId, name);
                 toast.success("Entity updated successfully");
-            } else {
-                await createEntity(name);
-                toast.success("Entity created successfully");
             }
             setName('');
             setIsEditing(false);
@@ -115,36 +112,36 @@ const AdminEntities = () => {
             <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight">Entity Management</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Form */}
-                <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700 h-fit">
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6">
-                        {isEditing ? 'Edit Entity' : 'Add New Entity'}
-                    </h3>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Select Entity</label>
-                            <div className="relative">
-                                <select
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none"
-                                >
-                                    <option value="">-- Select an Entity --</option>
-                                    {AVAILABLE_ENTITIES.map((entity) => (
-                                        <option key={entity.code} value={entity.name}>
-                                            {entity.name} ({entity.code})
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                {/* Form - Only show when editing */}
+                {isEditing && (
+                    <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700 h-fit">
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6">
+                            Edit Entity
+                        </h3>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Select Entity</label>
+                                <div className="relative">
+                                    <select
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none"
+                                    >
+                                        <option value="">-- Select an Entity --</option>
+                                        {AVAILABLE_ENTITIES.map((entity) => (
+                                            <option key={entity.code} value={entity.name}>
+                                                {entity.name} ({entity.code})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    </div>
                                 </div>
+                                <p className="mt-2 text-xs text-gray-400">Entities are predefined with linked codes.</p>
                             </div>
-                            <p className="mt-2 text-xs text-gray-400">Entities are predefined with linked codes.</p>
-                        </div>
 
-                        <div className="flex gap-3">
-                            {isEditing && (
+                            <div className="flex gap-3">
                                 <button
                                     type="button"
                                     onClick={handleCancel}
@@ -152,20 +149,20 @@ const AdminEntities = () => {
                                 >
                                     Cancel
                                 </button>
-                            )}
-                            <button
-                                type="submit"
-                                disabled={isSubmitting || !name.trim()}
-                                className="flex-1 py-4 bg-zuari-navy hover:bg-[#122856] text-white rounded-2xl font-bold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all disabled:opacity-70"
-                            >
-                                {isSubmitting ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting || !name.trim()}
+                                    className="flex-1 py-4 bg-zuari-navy hover:bg-[#122856] text-white rounded-2xl font-bold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all disabled:opacity-70"
+                                >
+                                    {isSubmitting ? 'Saving...' : 'Update'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
 
                 {/* List */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700">
+                <div className={`${isEditing ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700`}>
                     <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Existing Entities</h3>
                     <div className="overflow-x-auto">
                         <table className="w-full">
