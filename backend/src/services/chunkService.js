@@ -120,7 +120,7 @@ export const publishPolicy = async (policyId) => {
             content: chunk.content,
             heading: chunk.header,
             policy: policy.title,
-            entity: "Zuari Industries Ltd"
+            entity: policy.entity;
         }));
 
 
