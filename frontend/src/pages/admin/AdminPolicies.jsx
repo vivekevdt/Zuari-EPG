@@ -35,6 +35,7 @@ const AdminPolicies = () => {
     const [uploadEntity, setUploadEntity] = useState('');
     const [uploadCategory, setUploadCategory] = useState('HR - General');
     const [uploadExpiry, setUploadExpiry] = useState('');
+    const [noExpiry, setNoExpiry] = useState(false);
     const [changeNote, setChangeNote] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
     const [editingPolicyId, setEditingPolicyId] = useState(null);
@@ -50,12 +51,26 @@ const AdminPolicies = () => {
 
     // Categories List (Hardcoded for now as per design)
     const categories = [
-        'HR - General',
-        'HR - Recruitment',
-        'HR - Compensation',
-        'Legal',
-        'IT Security',
-        'Operations'
+        'Leave & Holidays',
+        'Time & Attendance',
+        'Travel & Expenses',
+        'Benefits & Perks',
+        'Events & Activities',
+        'HR - General'
+    ];
+
+    // Hardcoded Entity List (Fallback)
+    const AVAILABLE_ENTITIES = [
+        { code: 'ZIL', name: 'Zuari Industries Ltd' },
+        { code: 'ZIIL', name: 'Zuari Infraworld India Ltd' },
+        { code: 'SIL', name: 'Simon India Ltd' },
+        { code: 'ZIntL', name: 'Zuari International' },
+        { code: 'ZFL', name: 'Zuari Finserv Ltd' },
+        { code: 'ZIBL', name: 'Zuari Insurance Brokers Ltd' },
+        { code: 'ZMSL', name: 'Zuari Management Services Ltd' },
+        { code: 'FFPL', name: 'Forte Furniture Products India Pvt Ltd' },
+        { code: 'IFPL', name: 'Indian Furniture Private Ltd' },
+        { code: 'ZEBPL', name: 'Zuari Envien Bioenergy Pvt Ltd' }
     ];
 
     // Close menu when clicking outside
@@ -79,8 +94,16 @@ const AdminPolicies = () => {
             setPolicies(policiesData);
             setEntities(entitiesData);
             setArchivedPolicies(archivedData);
-            if (entitiesData.length > 0 && !uploadEntity) {
-                setUploadEntity(entitiesData[0].name);
+
+            // Fallback to hardcoded entities if API returns empty
+            const validEntities = entitiesData.length > 0 ? entitiesData : AVAILABLE_ENTITIES.map(e => ({ _id: e.code, name: e.name }));
+
+            if (entitiesData.length === 0) {
+                setEntities(validEntities);
+            }
+
+            if (validEntities.length > 0 && !uploadEntity) {
+                setUploadEntity(validEntities[0].name);
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -136,7 +159,7 @@ const AdminPolicies = () => {
         formData.append('title', uploadTitle);
         formData.append('entity', uploadEntity);
         if (uploadCategory) formData.append('category', uploadCategory);
-        if (uploadExpiry) formData.append('expiryDate', uploadExpiry);
+        if (!noExpiry && uploadExpiry) formData.append('expiryDate', uploadExpiry);
         if (changeNote) formData.append('changeNote', changeNote);
 
         try {
@@ -164,6 +187,7 @@ const AdminPolicies = () => {
         setUploadTitle('');
         setUploadCategory('HR - General');
         setUploadExpiry('');
+        setNoExpiry(false);
         setChangeNote('');
         if (entities.length > 0) setUploadEntity(entities[0].name);
         setEditingPolicyId(null);
@@ -173,7 +197,13 @@ const AdminPolicies = () => {
         setUploadTitle(policy.title);
         setUploadEntity(policy.entity);
         setUploadCategory(policy.category || 'HR - General');
-        setUploadExpiry(policy.expiryDate ? new Date(policy.expiryDate).toISOString().split('T')[0] : '');
+        if (policy.expiryDate) {
+            setUploadExpiry(new Date(policy.expiryDate).toISOString().split('T')[0]);
+            setNoExpiry(false);
+        } else {
+            setUploadExpiry('');
+            setNoExpiry(true);
+        }
         setEditingPolicyId(policy._id);
         setSelectedFile(null);
         setViewMode('upload');
@@ -387,19 +417,30 @@ const AdminPolicies = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expiry Date</label>
-                                <div className="relative">
-                                    <input
-                                        type="date"
-                                        value={uploadExpiry}
-                                        onChange={(e) => setUploadExpiry(e.target.value)}
-                                        className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700"
-                                    />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                                        <input type="checkbox" id="noExpiry" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300" />
-                                        <label htmlFor="noExpiry" className="text-xs font-bold text-gray-400 uppercase">No Expiry</label>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Expiry Date</label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="noExpiry"
+                                            checked={noExpiry}
+                                            onChange={(e) => {
+                                                setNoExpiry(e.target.checked);
+                                                if (e.target.checked) setUploadExpiry('');
+                                            }}
+                                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
+                                        />
+                                        <label htmlFor="noExpiry" className="text-xs font-bold text-gray-400 uppercase cursor-pointer select-none">No Expiry</label>
                                     </div>
                                 </div>
+                                <input
+                                    type="date"
+                                    value={uploadExpiry}
+                                    min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                                    disabled={noExpiry}
+                                    onChange={(e) => setUploadExpiry(e.target.value)}
+                                    className={`w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700 ${noExpiry ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                />
                             </div>
 
                             {editingPolicyId && (
