@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import config from '../config/env';
 dotenv.config();
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
@@ -42,6 +43,9 @@ const sendWelcomeEmail = async (user, plainPassword) => {
                     <p style="text-align: center; margin: 30px 0;">
                         <a href="${APP_URL}" style="background-color: #003366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Login to AskHR</a>
                     </p>
+                    <p style="text-align: center; margin-bottom: 30px;">
+                        Or visit: <a href="${APP_URL}" style="color: #003366;">${APP_URL}</a>
+                    </p>
                     
                     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
                     <p style="font-size: 12px; color: #6c757d;">This is an automated message. Please do not reply to this email.</p>
@@ -81,6 +85,9 @@ const sendPasswordResetEmail = async (user, tempPassword) => {
 
                     <p style="text-align: center; margin: 30px 0;">
                         <a href="${APP_URL}" style="background-color: #003366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Login to AskHR</a>
+                    </p>
+                    <p style="text-align: center; margin-bottom: 30px;">
+                        Or visit: <a href="${APP_URL}" style="color: #003366;">${APP_URL}</a>
                     </p>
                     
                     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
