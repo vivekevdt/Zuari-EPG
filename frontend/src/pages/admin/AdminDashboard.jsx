@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { getDashboardStats, getEntities, createEntity, deleteEntity, getLogs } from '../../api';
+import { getDashboardStats, getEntities, getLogs } from '../../api';
 
-import ConfirmationModal from '../../components/ConfirmationModal';
+
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
@@ -12,12 +12,10 @@ const AdminDashboard = () => {
         activePolicies: 0
     });
     const [entities, setEntities] = useState([]);
-    const [newEntityName, setNewEntityName] = useState('');
+
     const [loading, setLoading] = useState(true);
 
-    // Delete Modal State
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [entityToDelete, setEntityToDelete] = useState(null);
+
 
     // Logs State
     const [logs, setLogs] = useState([]);
@@ -64,44 +62,9 @@ const AdminDashboard = () => {
     // for now we add an 'Apply Filters' button or fetch on effect if needed.
     // Let's use a button for explicit filtering.
 
-    const handleAddEntity = async () => {
-        if (!newEntityName.trim()) return;
-        try {
-            await createEntity(newEntityName);
-            setNewEntityName('');
-            // Refresh entities
-            const updatedEntities = await getEntities();
-            setEntities(updatedEntities);
-            // Refresh stats to update entity count
-            const updatedStats = await getDashboardStats();
-            setStats(updatedStats);
-        } catch (error) {
-            console.error("Error creating entity:", error);
-            toast.error("Failed to create entity");
-        }
-    };
 
-    const confirmDeleteEntity = (id) => {
-        setEntityToDelete(id);
-        setIsDeleteModalOpen(true);
-    };
 
-    const handleDeleteEntity = async () => {
-        if (!entityToDelete) return;
-        try {
-            await deleteEntity(entityToDelete);
-            toast.success("Entity deleted successfully");
-            // Refresh entities
-            const updatedEntities = await getEntities();
-            setEntities(updatedEntities);
-            // Refresh stats
-            const updatedStats = await getDashboardStats();
-            setStats(updatedStats);
-        } catch (error) {
-            console.error("Error deleting entity:", error);
-            toast.error("Failed to delete entity");
-        }
-    };
+
 
     const handleFilterChange = (e) => {
         setLogFilters({ ...logFilters, [e.target.name]: e.target.value });
@@ -113,15 +76,7 @@ const AdminDashboard = () => {
 
     return (
         <div className="space-y-8 animate-up">
-            <ConfirmationModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onConfirm={handleDeleteEntity}
-                title="Delete Entity"
-                message="Are you sure you want to delete this entity? This action cannot be undone."
-                confirmText="Delete Entity"
-                isDanger={true}
-            />
+            {/* Modal removed */}
             <div className="flex items-end justify-between">
                 <div>
                     <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight mb-2">Dashboard Overview</h1>
@@ -170,9 +125,9 @@ const AdminDashboard = () => {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="flex flex-col gap-8">
                 {/* User Activity Logs Table */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700">
+                <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h3 className="text-xl font-bold text-gray-800 dark:text-white">User Activity Logs</h3>
@@ -278,46 +233,7 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Quick Actions / Entity List / Add Entity */}
-                <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col h-fit">
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Entity Management</h3>
-                    <p className="text-sm text-gray-500 mb-6">Add or view company branches</p>
 
-                    <div className="mb-6">
-                        <input
-                            type="text"
-                            placeholder="Enter new entity name..."
-                            className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            value={newEntityName}
-                            onChange={(e) => setNewEntityName(e.target.value)}
-                        />
-                        <button
-                            onClick={handleAddEntity}
-                            disabled={!newEntityName.trim()}
-                            className="w-full py-3.5 bg-zuari-navy hover:bg-[#122856] text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            Add New Entity
-                        </button>
-                    </div>
-
-                    <div className="space-y-3 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
-                        {entities.map((entity) => (
-                            <div key={entity._id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-700/30 hover:bg-blue-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group">
-                                <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></div>
-                                <span className="font-bold text-gray-700 dark:text-gray-200 text-sm">{entity.name}</span>
-                                <button
-                                    onClick={() => confirmDeleteEntity(entity._id)}
-                                    className="ml-auto text-gray-300 hover:text-red-500 transition-colors p-1"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                            </div>
-                        ))}
-                        {entities.length === 0 && (
-                            <div className="text-center text-gray-400 text-sm py-4">No entities found</div>
-                        )}
-                    </div>
-                </div>
             </div>
         </div>
     );
