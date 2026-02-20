@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import config from '../config/env';
+import config from '../config/env.js';
 dotenv.config();
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
