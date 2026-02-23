@@ -20,7 +20,7 @@ const createTestUser = async () => {
             email: 'talha.parkar@adventz.com',
             password: 'talha@1234',
             entity: "Zuari Industries Limited",
-            role: "user"
+            roles: ["employee"]
         };
 
         const existingUser = await User.findOne({ email: testUser.email });
@@ -38,7 +38,7 @@ const createTestUser = async () => {
             email: testUser.email,
             password: hashedPassword,
             entity: testUser.entity,
-            role: testUser.role
+            roles: testUser.roles
         });
 
         console.log('Test user created successfully:', user);

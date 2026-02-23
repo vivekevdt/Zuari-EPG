@@ -19,7 +19,7 @@ const createTestUser = async () => {
             name: 'Admin',
             email: 'admin@adventz.com',
             password: 'admin@1234',
-            role: "admin",
+            roles: ["admin"],
             entity: "Zuari Industries Limited"
         };
 
@@ -38,7 +38,7 @@ const createTestUser = async () => {
             email: testUser.email,
             password: hashedPassword,
             entity: testUser.entity,
-            role: testUser.role
+            roles: testUser.roles
         });
 
         console.log('Test admin created successfully:', user);

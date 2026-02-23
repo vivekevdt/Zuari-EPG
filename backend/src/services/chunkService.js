@@ -11,6 +11,11 @@ import { loadPDF, loadDOCX } from '../utils/textLoaders.js';
 import { table } from '../db/lancedb.js';
 import embed from '../utils/embeddings.js';
 
+
+
+
+
+
 // Read content from PDF or DOCX files
 const readFileContent = async (filePath) => {
     const ext = path.extname(filePath).toLowerCase();
@@ -29,6 +34,7 @@ const readFileContent = async (filePath) => {
         throw new Error(`Failed to extract text from file: ${error.message}`);
     }
 };
+
 
 export const processPolicyFile = async (policy) => {
     try {
@@ -55,6 +61,7 @@ export const processPolicyFile = async (policy) => {
         throw error;
     }
 };
+
 
 // Function to store chunks for a policy
 // We will assume that 'chunks' is an array of strings (the text content of each chunk)
@@ -86,6 +93,7 @@ export const storeChunks = async (policyId, chunks) => {
     }
 };
 
+
 // Function to get chunks for a policy (used when publishing)
 export const getChunksByPolicyId = async (policyId) => {
     try {
@@ -101,6 +109,7 @@ export const getChunksByPolicyId = async (policyId) => {
         throw error;
     }
 };
+
 
 export const publishPolicy = async (policyId) => {
     try {
@@ -122,6 +131,11 @@ export const publishPolicy = async (policyId) => {
             policy: policy.title,
             entity: policy.entity
         }));
+
+
+
+
+
 
 
 

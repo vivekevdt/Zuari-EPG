@@ -11,7 +11,7 @@ const createConversation = async (req, res, next) => {
 
         const conversation = await chatService.createNewConversation(req.user._id, title);
 
-        await createLog(req.user._id, req.user.name, req.user.role, req.user.entity, `Created conversation: ${title}`);
+        await createLog(req.user._id, req.user.name, req.user.roles?.join(', ') || 'employee', req.user.entity, `Created conversation: ${title}`);
 
         res.status(201).json({
             statusCode: 201,
@@ -102,7 +102,7 @@ const sendMessage = async (req, res, next) => {
         // 1. Save User Message
         const userMessage = await chatService.saveMessage(conversation._id, req.user._id, 'user', content);
 
-        await createLog(req.user._id, req.user.name, req.user.role, req.user.entity, `Prompted AI: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
+        await createLog(req.user._id, req.user.name, req.user.roles?.join(', ') || 'employee', req.user.entity, `Prompted AI: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
 
         // 2. Fetch recent context
         const recentMessages = await chatService.getRecentMessages(conversation._id);

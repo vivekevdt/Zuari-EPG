@@ -17,7 +17,7 @@ import authService from '../services/authService.js';
 // @access  Private/Admin
 const getDashboardStats = async (req, res, next) => {
     try {
-        const totalEmployees = await User.countDocuments({ role: 'user' });
+        const totalEmployees = await User.countDocuments({ roles: 'employee' });
         const totalEntities = await Entity.countDocuments();
         const totalInteractions = await Conversation.countDocuments();
         const activePolicies = await Policy.countDocuments({ status: 'live' });
@@ -79,7 +79,7 @@ const deleteUser = async (req, res, next) => {
                 logDescription: `User Deleted: ${user.name}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -116,7 +116,7 @@ const updateUser = async (req, res, next) => {
                 logDescription: `User Updated: ${updatedUser.name}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -297,7 +297,7 @@ const deleteEntity = async (req, res, next) => {
                 logDescription: `Entity Deleted: ${entityToDelete.name}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -355,7 +355,7 @@ const updateEntity = async (req, res, next) => {
                 logDescription: `Entity Updated: ${oldName} -> ${updatedEntity.name} (${updatedEntity.entityCode})`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -513,7 +513,7 @@ const deletePolicy = async (req, res, next) => {
                 logDescription: `Policy Deleted: ${policy.title}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 

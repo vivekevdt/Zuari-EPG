@@ -16,7 +16,7 @@ const authUser = async (req, res, next) => {
         const userData = await authService.loginUser(email, password);
 
         // Log Login Activity
-        await createLog(userData._id, userData.name, userData.role, userData.entity, 'User Logged In');
+        await createLog(userData._id, userData.name, userData.roles?.join(', ') || 'employee', userData.entity, 'User Logged In');
 
         res.status(200).json({
             statusCode: 200,
@@ -33,17 +33,17 @@ const authUser = async (req, res, next) => {
 // @access  Public
 const registerUser = async (req, res, next) => {
     try {
-        const { name, email, password, role, entity, level, status, entity_code } = req.body;
+        const { name, email, password, roles, entity, level, status, entity_code } = req.body;
 
         if (!name || !email) {
             res.status(400);
             throw new Error('Please provide name and email');
         }
 
-        const userData = await authService.registerUser(name, email, password, role, entity, level, status, entity_code);
+        const userData = await authService.registerUser(name, email, password, roles, entity, level, status, entity_code);
 
         // Log Registration
-        await createLog(userData._id, userData.name, userData.role, userData.entity, 'User Registered');
+        await createLog(userData._id, userData.name, userData.roles?.join(', ') || 'employee', userData.entity, 'User Registered');
 
         res.status(201).json({
             statusCode: 201,

@@ -19,7 +19,7 @@ const SuperAdminRoute = ({ children }) => {
   if (loading) return null;
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'superAdmin') return <Navigate to="/" replace />;
+  if (!user.roles?.includes('superAdmin')) return <Navigate to="/" replace />;
 
   return children;
 };
@@ -29,7 +29,7 @@ const AdminRoute = ({ children }) => {
   if (loading) return null;
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/" replace />; // Strict check, or allow superAdmin? User specified separate role.
+  if (!user.roles?.includes('admin') && !user.roles?.includes('superAdmin')) return <Navigate to="/" replace />;
 
   return children;
 };
@@ -39,8 +39,7 @@ const EmployeeRoute = ({ children }) => {
   if (loading) return null;
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-  if (user.role === 'superAdmin') return <Navigate to="/super-admin/dashboard" replace />;
+  if (user.roles?.includes('admin') || user.roles?.includes('superAdmin')) return <Navigate to="/admin/dashboard" replace />;
 
   return children;
 };
@@ -50,8 +49,8 @@ const PublicRoute = ({ children }) => {
   if (loading) return null;
 
   if (user) {
-    if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-    if (user.role === 'superAdmin') return <Navigate to="/super-admin/dashboard" replace />;
+    if (user.roles?.includes('admin')) return <Navigate to="/admin/dashboard" replace />;
+    if (user.roles?.includes('superAdmin')) return <Navigate to="/super-admin/dashboard" replace />;
     return <Navigate to="/" replace />;
   }
 
@@ -89,7 +88,7 @@ function App() {
           <Route path="policies" element={<AdminPolicies />} />
 
           <Route path="interactions" element={<AdminInteractions />} />
-          <Route path="employees" element={<AdminEmployees />} />
+          <Route path="user-management" element={<AdminEmployees />} />
           <Route path="playground" element={<Playground />} />
         </Route>
 

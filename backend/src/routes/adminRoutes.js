@@ -28,7 +28,7 @@ import { protect } from '../middleware/authMiddleware.js';
 
 // Admin middleware to ensure user is admin
 const admin = (req, res, next) => {
-    if (req.user && (req.user.role === 'admin' || req.user.role === 'superAdmin')) {
+    if (req.user && (req.user.roles?.includes('admin') || req.user.roles?.includes('superAdmin'))) {
         next();
     } else {
         res.status(401);
