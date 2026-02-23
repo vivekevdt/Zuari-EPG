@@ -307,7 +307,7 @@ const deleteEntity = async (req, res, next) => {
             });
         } else {
             res.status(404);
-            throw new Error('Entity not found');
+            throw new Error('Entity not found')
         }
     } catch (error) {
         next(error);
