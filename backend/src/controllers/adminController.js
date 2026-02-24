@@ -53,7 +53,13 @@ const getDashboardStats = async (req, res, next) => {
 // @access  Private/Admin
 const getUsers = async (req, res, next) => {
     try {
-        const users = await User.find({ role: 'user' }).select('-password').sort({ createdAt: -1 });
+        // Fetch all users who are NOT superAdmin, populate linked config refs
+        const users = await User.find({ roles: { $not: { $all: ['superAdmin'] }, $nin: [] } })
+            .select('-password')
+            .populate('entity', 'name entityCode')
+            .populate('level', 'name')
+            .populate('empCategory', 'name code')
+            .sort({ createdAt: -1 });
         res.status(200).json({
             success: true,
             data: users
@@ -70,6 +76,7 @@ const getUsers = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id);
+        console.log(user)
 
         if (user) {
             await User.findByIdAndDelete(req.params.id);
@@ -103,7 +110,15 @@ const updateUser = async (req, res, next) => {
         if (user) {
             user.name = req.body.name || user.name;
             user.email = req.body.email || user.email;
-            user.entity = req.body.entity || user.entity;
+            user.entity = req.body.entity !== undefined ? (req.body.entity || null) : user.entity;
+            user.entity_code = req.body.entity_code ?? user.entity_code;
+            user.level = req.body.level !== undefined ? (req.body.level || null) : user.level;
+            user.empCategory = req.body.empCategory !== undefined ? (req.body.empCategory || null) : user.empCategory;
+            user.status = req.body.status || user.status;
+
+            if (req.body.roles && Array.isArray(req.body.roles) && req.body.roles.length > 0) {
+                user.roles = req.body.roles;
+            }
 
             if (req.body.password) {
                 user.password = req.body.password;
@@ -124,8 +139,12 @@ const updateUser = async (req, res, next) => {
                 _id: updatedUser._id,
                 name: updatedUser.name,
                 email: updatedUser.email,
+                roles: updatedUser.roles,
                 entity: updatedUser.entity,
-                role: updatedUser.role,
+                entity_code: updatedUser.entity_code,
+                level: updatedUser.level,
+                empCategory: updatedUser.empCategory,
+                status: updatedUser.status,
             });
         } else {
             res.status(404);
@@ -409,17 +428,30 @@ const uploadPolicy = async (req, res, next) => {
             throw new Error('Please upload a file');
         }
 
-        const { title, entity, category, expiryDate } = req.body;
+        const { title, category, expiryDate, description } = req.body;
+        let { entity, impactLevel, empCategory } = req.body;
 
-        if (!title || !entity) {
+        const parseArray = (field) => {
+            if (!field) return [];
+            try { return JSON.parse(field); } catch (e) { return Array.isArray(field) ? field : [field]; }
+        };
+
+        entity = parseArray(entity);
+        impactLevel = parseArray(impactLevel);
+        empCategory = parseArray(empCategory);
+
+        if (!title || !entity || !entity.length) {
             res.status(400);
-            throw new Error('Title and Entity are required');
+            throw new Error('Title and at least one Entity are required');
         }
 
         const policy = await Policy.create({
             title,
             filename: req.file.filename,
             entity,
+            impactLevel,
+            empCategory,
+            description: description || '',
             category: category || 'General',
             expiryDate: expiryDate || null,
             status: 'draft' // Default status changed to draft to match UI
@@ -462,7 +494,7 @@ const createChunks = async (req, res, next) => {
             logDescription: `Policy Chunked: ${policy.title}`,
             userId: req.user._id,
             name: req.user.name,
-            role: req.user.role,
+            role: req.user.roles?.join(', ') || 'employee',
             entity: req.user.entity
         });
 
@@ -547,7 +579,17 @@ const updatePolicy = async (req, res, next) => {
         const oldEntity = policy.entity;
         const currentVersion = policy.version || '1.0';
 
-        const { title, entity, category, expiryDate, changeNote } = req.body;
+        const { title, category, expiryDate, changeNote, description } = req.body;
+        let { entity, impactLevel, empCategory } = req.body;
+
+        const parseArray = (field) => {
+            if (!field) return undefined;
+            try { return JSON.parse(field); } catch (e) { return Array.isArray(field) ? field : [field]; }
+        };
+
+        const newEntity = parseArray(entity);
+        const newImpactLevel = parseArray(impactLevel);
+        const newEmpCategory = parseArray(empCategory);
 
         // Create version history entry
         const historyEntry = {
@@ -567,6 +609,9 @@ const updatePolicy = async (req, res, next) => {
             title: `${oldTitle} (v${currentVersion})`,
             filename: policy.filename, // keep old filename
             entity: oldEntity,
+            impactLevel: policy.impactLevel,
+            empCategory: policy.empCategory,
+            description: policy.description,
             category: policy.category,
             uploadDate: policy.uploadDate,
             expiryDate: policy.expiryDate,
@@ -587,14 +632,21 @@ const updatePolicy = async (req, res, next) => {
 
 
         if (title) policy.title = title;
-        if (entity) policy.entity = entity;
+        if (newEntity) policy.entity = newEntity;
+        if (newImpactLevel) policy.impactLevel = newImpactLevel;
+        if (newEmpCategory) policy.empCategory = newEmpCategory;
+        if (description !== undefined) policy.description = description;
+
         if (category) policy.category = category;
         // Handle date properly, allowing clearing it if sent as null/empty
         if (expiryDate !== undefined) policy.expiryDate = expiryDate;
 
         // If title or entity changed, delete old chunks from vector DB
-        if ((title && title !== oldTitle) || (entity && entity !== oldEntity)) {
-            await deleteChunks(oldTitle, oldEntity);
+        // We only check if entity has changed. Assuming oldEntity[0] for deleteChunks if it's an array mismatch.
+        // Or if changed, we just use the first item to delete chunks for now.
+        const entityChanged = newEntity && JSON.stringify(newEntity) !== JSON.stringify(oldEntity);
+        if ((title && title !== oldTitle) || entityChanged) {
+            await deleteChunks(oldTitle, oldEntity[0] || oldEntity);
             // If policy was live, we should reset status because vector data is now gone/stale
             if (policy.status === 'live') {
                 policy.status = 'chunked'; // Ready to publish again with new metadata
@@ -618,7 +670,7 @@ const updatePolicy = async (req, res, next) => {
             logDescription: `Policy Updated: ${updatedPolicy.title} to v${updatedPolicy.version}`,
             userId: req.user._id,
             name: req.user.name,
-            role: req.user.role,
+            role: req.user.roles?.join(', ') || 'employee',
             entity: req.user.entity
         });
 

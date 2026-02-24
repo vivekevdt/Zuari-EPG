@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import ChatArea from '../components/ChatArea';
 import CalendarModal from '../components/CalendarModal';
@@ -8,11 +9,13 @@ import { useAuth } from '../context/AuthContext';
 
 const EmployeeDashboard = () => {
     const { user: contextUser, logout } = useAuth();
+    const navigate = useNavigate();
     const user = {
-        name: contextUser?.name || "Employee",
+        name: contextUser?.name || 'Employee',
         email: contextUser?.email,
         avatar: contextUser?.avatar || null
     };
+    const isAlsoAdmin = contextUser?.roles?.includes('admin') || contextUser?.roles?.includes('superAdmin');
 
     const [sessions, setSessions] = useState([]);
     const [activeSessionId, setActiveSessionId] = useState(null);
@@ -134,6 +137,24 @@ const EmployeeDashboard = () => {
             <div className="bg-grid"></div>
             <div className="ambient-glow glow-1"></div>
             <div className="ambient-glow glow-2"></div>
+
+            {/* Switch to Admin View — fixed pill, only for dual-role users */}
+            {isAlsoAdmin && (
+                <button
+                    onClick={() => navigate('/admin/dashboard')}
+                    className="fixed top-4 right-4 z-100 flex items-center gap-2 px-4 py-2 rounded-xl
+                               bg-zuari-navy/90 hover:bg-zuari-navy text-white text-sm font-bold
+                               shadow-lg shadow-blue-900/30 backdrop-blur-md border border-white/10
+                               transition-all hover:scale-105 active:scale-95"
+                    title="Switch to Admin Dashboard"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    Admin View
+                </button>
+            )}
 
             {/* Mobile Overlay */}
             <div

@@ -108,7 +108,7 @@ const sendMessage = async (req, res, next) => {
         const recentMessages = await chatService.getRecentMessages(conversation._id);
 
         // 3. Generate Bot Response
-        const botContent = await aiService.generateAIResponse(recentMessages, req.user.entity);
+        const botContent = await aiService.generateAIResponse(recentMessages, req.user);
 
         // 4. Save Bot Message
         const botMessage = await chatService.saveMessage(conversation._id, req.user._id, 'ai', botContent);

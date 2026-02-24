@@ -19,8 +19,8 @@ const createTestUser = async () => {
             name: 'Super Admin',
             email: 'superadmin@adventz.com',
             password: 'superadmin@1234',
-            role: "superAdmin",
-            entity: "Zuari Industries Limited"
+            roles: ["superAdmin"],
+            entity: null
         };
 
         const existingUser = await User.findOne({ email: testUser.email });
@@ -38,7 +38,7 @@ const createTestUser = async () => {
             email: testUser.email,
             password: hashedPassword,
             entity: testUser.entity,
-            role: testUser.role
+            roles: testUser.roles
         });
 
         console.log('Test admin created successfully:', user);

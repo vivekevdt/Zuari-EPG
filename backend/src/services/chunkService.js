@@ -129,7 +129,9 @@ export const publishPolicy = async (policyId) => {
             content: chunk.content,
             heading: chunk.header,
             policy: policy.title,
-            entity: policy.entity
+            entity: Array.isArray(policy.entity) ? policy.entity.join(',') : String(policy.entity || ''),
+            impactLevel: Array.isArray(policy.impactLevel) ? policy.impactLevel.join(',') : String(policy.impactLevel || ''),
+            empCategory: Array.isArray(policy.empCategory) ? policy.empCategory.join(',') : String(policy.empCategory || '')
         }));
 
 
@@ -164,9 +166,11 @@ export const deleteChunks = async (policyTitle, entity) => {
             return;
         }
 
-        // storage of strings in lancedb might need escaping if they contain single quotes
+        // stringify entity if array to match lancedb storage format
+        const entityStr = Array.isArray(entity) ? entity.join(',') : String(entity || '');
+
         const safeTitle = policyTitle.replace(/'/g, "\\'");
-        const safeEntity = entity.replace(/'/g, "\\'");
+        const safeEntity = entityStr.replace(/'/g, "\\'");
 
         // Delete where policy AND entity match
         await table.delete(`policy = '${safeTitle}' AND entity = '${safeEntity}'`);

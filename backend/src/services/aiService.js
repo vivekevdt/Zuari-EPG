@@ -50,7 +50,7 @@ Structure your response as follows:
 
 
 
-const generateAIResponse = async (messages, userEntity) => {
+const generateAIResponse = async (messages, user) => {
     try {
         if (!config.GEMINI_API_KEY) {
             return "Server Error: Gemini API Key not configured.";
@@ -64,7 +64,7 @@ const generateAIResponse = async (messages, userEntity) => {
         let policyText = "No relevant policies found.";
         if (query) {
             try {
-                const searchResults = await searchPolicy(query, userEntity);
+                const searchResults = await searchPolicy(query, user);
                 if (searchResults && searchResults.length > 0) {
 
                     policyText = searchResults.map(r =>

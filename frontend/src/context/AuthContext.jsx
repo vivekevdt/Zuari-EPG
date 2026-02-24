@@ -12,7 +12,9 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const userInfo = localStorage.getItem('userInfo');
         if (userInfo) {
-            setUser(JSON.parse(userInfo));
+            let parsed = JSON.parse(userInfo);
+            if (!parsed.roles && parsed.role) parsed.roles = [parsed.role];
+            setUser(parsed);
         }
         setLoading(false);
     }, []);

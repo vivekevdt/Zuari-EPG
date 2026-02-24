@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import config from "../config/env.js"
+import config from "../config/env.js";
+import Entity from '../models/Entity.js';
 dotenv.config();
 const APP_URL = config.API_URL;
 
@@ -20,6 +21,26 @@ const transporter = nodemailer.createTransport({
 
 const sendWelcomeEmail = async (user, plainPassword) => {
     try {
+        // Resolve entity name — user.entity is an ObjectId after creation
+        let entityDisplay = 'N/A';
+        if (user.entity) {
+            if (user.entity.name) {
+                // Already populated object
+                entityDisplay = `${user.entity.name} (${user.entity.entityCode})`;
+            } else {
+                // Raw ObjectId — look it up
+                try {
+                    const entityDoc = await Entity.findById(user.entity).select('name entityCode');
+                    if (entityDoc) entityDisplay = `${entityDoc.name} (${entityDoc.entityCode})`;
+                } catch (_) { entityDisplay = user.entity.toString(); }
+            }
+        }
+
+        // Roles: use the array, formatted nicely
+        const rolesDisplay = (user.roles && user.roles.length > 0)
+            ? user.roles.join(', ')
+            : 'Employee';
+
         const mailOptions = {
             from: "vivek.kumar@adventz.com",
             to: user.email,
@@ -34,8 +55,8 @@ const sendWelcomeEmail = async (user, plainPassword) => {
                         <h3 style="margin-top: 0; color: #495057;">Your Login Credentials</h3>
                         <p style="margin: 5px 0;"><strong>Email:</strong> ${user.email}</p>
                         <p style="margin: 5px 0;"><strong>Password:</strong> ${plainPassword}</p>
-                        <p style="margin: 5px 0;"><strong>Entity:</strong> ${user.entity}</p>
-                        <p style="margin: 5px 0;"><strong>Role:</strong> ${user.role}</p>
+                        <p style="margin: 5px 0;"><strong>Entity:</strong> ${entityDisplay}</p>
+                        <p style="margin: 5px 0;"><strong>Role:</strong> ${rolesDisplay}</p>
                     </div>
 
                     <p>Please login and change your password immediately for security purposes.</p>
