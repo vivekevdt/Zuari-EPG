@@ -158,8 +158,8 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
                         </button>
                     </form>
-                    <p className="text-[9px] text-gray-400 text-center mt-5 uppercase tracking-[0.4em] font-black opacity-40">
-                        Internal Support System &bull; AskHR
+                    <p className="text-[15px] text-gray-900 text-center mt-5 font-black opacity-40">
+                        AskHR can make mistakes. Check with corporate Hr team for more info.
                     </p>
                 </div>
             </div>
