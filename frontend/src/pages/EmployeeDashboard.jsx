@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import ChatArea from '../components/ChatArea';
 import CalendarModal from '../components/CalendarModal';
-import { getConversations, getMessages, createConversation, sendMessage, deleteConversation, getAvailableEmployeePolicies } from '../api';
+import { getConversations, getMessages, createConversation, sendMessage, deleteConversation, getAvailableEmployeePolicies, getDynamicFAQs } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 const EmployeeDashboard = () => {
@@ -24,6 +24,8 @@ const EmployeeDashboard = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [availablePolicies, setAvailablePolicies] = useState([]);
+    const [dynamicFaqs, setDynamicFaqs] = useState([]);
+    const [isFaqLoading, setIsFaqLoading] = useState(true);
 
     useEffect(() => {
         // Apply dashboard-specific body classes on mount
@@ -51,9 +53,23 @@ const EmployeeDashboard = () => {
                 ]);
                 setSessions(sessionsData);
                 setAvailablePolicies(policiesData);
-                // We default to NO active session to show Home View
+
+                if (policiesData && policiesData.length > 0) {
+                    const policyTitles = policiesData.map(p => p.title);
+                    try {
+                        const faqs = await getDynamicFAQs(policyTitles);
+                        setDynamicFaqs(faqs);
+                    } catch (faqError) {
+                        console.error("Failed to load dynamic FAQs:", faqError);
+                    } finally {
+                        setIsFaqLoading(false);
+                    }
+                } else {
+                    setIsFaqLoading(false);
+                }
             } catch (error) {
                 console.error("Failed to fetch initial Dashboard data:", error);
+                setIsFaqLoading(false);
             }
         };
         fetchInitialData();
@@ -190,6 +206,8 @@ const EmployeeDashboard = () => {
                 user={user}
                 toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 toggleDarkMode={toggleDarkMode}
+                dynamicFaqs={dynamicFaqs}
+                isFaqLoading={isFaqLoading}
             />
 
             <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} />

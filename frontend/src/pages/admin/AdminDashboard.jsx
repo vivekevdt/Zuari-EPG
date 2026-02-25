@@ -159,7 +159,7 @@ const AdminDashboard = () => {
                         >
                             <option value="">All Entities</option>
                             {entities.map(ent => (
-                                <option key={ent._id} value={ent.name}>{ent.name}</option>
+                                <option key={ent._id} value={ent._id}>{ent.name}</option>
                             ))}
                         </select>
                         <input
@@ -212,7 +212,7 @@ const AdminDashboard = () => {
                                                 {log.role}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-4 text-sm text-gray-500">{log.entity}</td>
+                                        <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400 font-medium">{log.entity?.name || log.entity || '-'}</td>
                                         <td className="py-3 px-4 text-right text-xs text-gray-400 font-mono">
                                             {new Date(log.createdAt).toLocaleString()}
                                         </td>

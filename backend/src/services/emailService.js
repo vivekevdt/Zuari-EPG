@@ -5,19 +5,23 @@ import Entity from '../models/Entity.js';
 dotenv.config();
 const APP_URL = config.API_URL;
 
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.office365.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-    auth: {
-        user: "vivek.kumar@adventz.com",
-        pass: "Welcome@1234",
-    },
-    tls: {
-        ciphers: 'SSLv3',
-        rejectUnauthorized: false
-    }
-});
+
+
+const getTransporter = () => {
+    return nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.office365.com',
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+        auth: {
+            user: config.SMTP_FROM,
+            pass: config.SMTP_PASSWORD
+        },
+        tls: {
+            ciphers: 'SSLv3',
+            rejectUnauthorized: false
+        }
+    });
+};
 
 const sendWelcomeEmail = async (user, plainPassword) => {
     try {
@@ -42,7 +46,7 @@ const sendWelcomeEmail = async (user, plainPassword) => {
             : 'Employee';
 
         const mailOptions = {
-            from: "vivek.kumar@adventz.com",
+            from: config.SMTP_FROM,
             to: user.email,
             subject: 'Welcome to AskHR - Account Credentials',
             html: `
@@ -74,6 +78,7 @@ const sendWelcomeEmail = async (user, plainPassword) => {
             `
         };
 
+        const transporter = getTransporter();
         const info = await transporter.sendMail(mailOptions);
         console.log('Welcome email sent: ' + info.response);
         return info;
@@ -117,6 +122,7 @@ const sendPasswordResetEmail = async (user, tempPassword) => {
             `
         };
 
+        const transporter = getTransporter();
         const info = await transporter.sendMail(mailOptions);
         console.log('Password reset email sent: ' + info.response);
         return info;

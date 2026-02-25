@@ -3,6 +3,7 @@ import Conversation from '../models/Conversation.js';
 import Entity from '../models/Entity.js';
 import Policy from '../models/Policy.js';
 import Log from '../models/Log.js';
+import Message from '../models/Message.js';
 import EmployeeCategory from '../models/EmployeeCategory.js';
 import ImpactLevel from '../models/ImpactLevel.js';
 // We will need a service to handle chunking logic, but for now we can simulate or create a placeholder
@@ -81,6 +82,10 @@ const deleteUser = async (req, res, next) => {
 
         if (user) {
             await User.findByIdAndDelete(req.params.id);
+
+            // Cascade delete user conversations and messages
+            await Conversation.deleteMany({ userId: user._id });
+            await Message.deleteMany({ userId: user._id });
 
             // Log User Deletion
             await Log.create({
@@ -194,12 +199,12 @@ const getInteractions = async (req, res, next) => {
         if (startDate || endDate) {
             conversationQuery.updatedAt = {};
             if (startDate) {
-                conversationQuery.updatedAt.$gte = new Date(startDate);
+                // Parse as local start of day
+                conversationQuery.updatedAt.$gte = new Date(`${startDate}T00:00:00`);
             }
             if (endDate) {
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                conversationQuery.updatedAt.$lte = end;
+                // Parse as local end of day
+                conversationQuery.updatedAt.$lte = new Date(`${endDate}T23:59:59.999`);
             }
         }
 
@@ -695,6 +700,11 @@ const getLogs = async (req, res, next) => {
 
         let query = {};
 
+        // Only allow superAdmins to see superAdmin logs
+        if (req.user && !req.user.roles?.includes('superAdmin')) {
+            query.role = { $not: /superAdmin/i };
+        }
+
         if (employeeName) {
             query.name = { $regex: employeeName, $options: 'i' };
         }
@@ -706,17 +716,18 @@ const getLogs = async (req, res, next) => {
         if (startDate || endDate) {
             query.createdAt = {};
             if (startDate) {
-                query.createdAt.$gte = new Date(startDate);
+                // Parse as local start of day
+                query.createdAt.$gte = new Date(`${startDate}T00:00:00`);
             }
             if (endDate) {
-                // Set end date to end of day
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                query.createdAt.$lte = end;
+                // Parse as local end of day
+                query.createdAt.$lte = new Date(`${endDate}T23:59:59.999`);
             }
         }
 
-        const logs = await Log.find(query).sort({ createdAt: -1 });
+        const logs = await Log.find(query)
+            .populate('entity', 'name')
+            .sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,

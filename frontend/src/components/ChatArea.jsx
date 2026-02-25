@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 
-const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, toggleDarkMode }) => {
+const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, toggleDarkMode, dynamicFaqs, isFaqLoading }) => {
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
 
@@ -24,59 +24,44 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
         onSendMessage(text);
     };
 
+    const displayFaqs = dynamicFaqs?.length > 0 ? dynamicFaqs.slice(0, 4) : [];
+
+    const faqStyles = [
+        {
+            bg: 'bg-blue-50 dark:bg-blue-900/30 text-blue-500',
+            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        },
+        {
+            bg: 'bg-green-50 dark:bg-green-900/30 text-green-500',
+            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+        },
+        {
+            bg: 'bg-orange-50 dark:bg-orange-900/30 text-orange-500',
+            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        },
+        {
+            bg: 'bg-purple-50 dark:bg-purple-900/30 text-purple-500',
+            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        }
+    ];
+
     const homeView = (
-        <div id="homeView" className="w-full max-w-5xl mx-auto px-6 mb-4 animate-up">
-            <div className="mb-8 text-center sm:text-left">
-                <h2 id="dynamicGreeting" className="text-4xl font-black mb-2 tracking-tight text-[var(--text-main)]">
-                    Hello, <span className="text-blue-600">{user?.name || 'Employee'}</span>.
+        <div id="homeView" className="w-full max-w-5xl mx-auto px-8 mb-4 animate-up h-full flex flex-col justify-center">
+            <div className="text-left w-full flex flex-col items-start">
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="w-14 h-14 rounded-2xl bg-[#1d52d9] shadow-lg shadow-blue-900/10 flex items-center justify-center shrink-0">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    </div>
+                    <div className="flex flex-col">
+                        <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white leading-none mb-1">AskHR</h1>
+                        <span className="text-[10px] font-bold text-[#2563eb] uppercase tracking-widest">AI Policy Assistant</span>
+                    </div>
+                </div>
+
+                <h2 id="dynamicGreeting" className="text-4xl font-black mb-3 tracking-tight text-[var(--text-main)]">
+                    Hello, <span className="text-blue-600">{user?.name?.split(' ')[0] || 'Employee'}</span>.
                 </h2>
-                <p className="text-gray-400 font-medium text-lg">How can I assist you with company policies today?</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
-                <button onClick={() => handleSuggestion('What is the annual leave policy?')} className="chat-pill text-left p-5 rounded-[24px]">
-                    <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-500">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        </div>
-                        <span className="font-bold text-[16px] text-[var(--text-main)]">Annual Leave</span>
-                    </div>
-                    <div className="text-[14px] text-[var(--text-muted)] pl-11">View entitlement and application rules.</div>
-                </button>
-
-
-                <button onClick={() => handleSuggestion('Tell me about health insurance benefits.')} className="chat-pill text-left p-5 rounded-[24px]">
-                    <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg text-green-500">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                        </div>
-                        <span className="font-bold text-[16px] text-[var(--text-main)]">Medical Coverage</span>
-                    </div>
-                    <div className="text-[14px] text-[var(--text-muted)] pl-11">Claims, family coverage & network.</div>
-                </button>
-
-
-                <button onClick={() => handleSuggestion('What are the IT security guidelines for remote work?')} className="chat-pill text-left p-5 rounded-[24px]">
-                    <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg text-orange-500">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                        </div>
-                        <span className="font-bold text-[16px] text-[var(--text-main)]">IT Security</span>
-                    </div>
-                    <div className="text-[14px] text-[var(--text-muted)] pl-11">Remote work protocols and VPN access.</div>
-                </button>
-
-
-                <button onClick={() => handleSuggestion('Show me the expense reimbursement procedure.')} className="chat-pill text-left p-5 rounded-[24px]">
-                    <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg text-purple-500">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        </div>
-                        <span className="font-bold text-[16px] text-[var(--text-main)]">Reimbursements</span>
-                    </div>
-                    <div className="text-[14px] text-[var(--text-muted)] pl-11">Travel, meals, and business expenses.</div>
-                </button>
-
+                <p className="text-gray-400 font-medium text-lg max-w-xl">How can I assist you with company policies today?</p>
             </div>
         </div>
     );
@@ -97,15 +82,15 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                     <div className="max-w-6xl mx-auto px-6 space-y-8 pb-4 w-full">
                         {messages.map((msg) => (
                             <div key={msg._id || msg.id} className={`flex gap-6 animate-up ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`w-10 h-10 rounded-[14px] ${msg.role === 'ai' || msg.role === 'assistant' ? 'bg-zuari-navy shadow-lg' : 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm'} shrink-0 flex items-center justify-center`}>
+                                <div className={`w-8 h-8 rounded-lg ${msg.role === 'ai' || msg.role === 'assistant' ? 'bg-zuari-navy shadow-lg' : 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm'} shrink-0 flex items-center justify-center`}>
                                     {msg.role === 'ai' || msg.role === 'assistant' ? (
-                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                     ) : (
-                                        <span className="text-[10px] font-black text-gray-400">YOU</span>
+                                        <span className="text-[9px] font-black text-gray-400">YOU</span>
                                     )}
                                 </div>
                                 <div className="space-y-4 pt-1 max-w-[85%]">
-                                    <div className={`p-6 rounded-[24px] ${msg.role === 'ai' || msg.role === 'assistant' ? 'glass text-[var(--text-main)]' : 'bg-zuari-navy text-white shadow-xl'}`}>
+                                    <div className={`p-4 rounded-2xl ${msg.role === 'ai' || msg.role === 'assistant' ? 'glass text-[var(--text-main)] border border-gray-100 dark:border-slate-800' : 'bg-zuari-navy text-white shadow-md'}`}>
                                         <div className={` ${msg.role === 'user' ? 'text-right' : 'font-medium'}`}>
                                             <div
                                                 className={`prose prose-sm max-w-none
@@ -125,8 +110,8 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
 
                         {isLoading && (
                             <div className="flex gap-6 animate-up">
-                                <div className="w-10 h-10 rounded-[14px] bg-zuari-navy flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                <div className="w-8 h-8 rounded-lg bg-zuari-navy flex items-center justify-center shrink-0">
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                 </div>
                                 <div className="pt-3 thinking-dots text-gray-400">
                                     <span className="bg-current"></span>
@@ -142,23 +127,55 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
             {/* Input Area */}
             <div className="w-full px-6 pb-10">
                 <div className="max-w-6xl mx-auto relative">
+                    {messages.length === 0 && (
+                        <div className="mb-4">
+                            {isFaqLoading ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className="animate-pulse bg-gray-100 dark:bg-slate-800/60 rounded-xl p-4 flex items-center gap-3 border border-transparent">
+                                            <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-slate-700 shrink-0"></div>
+                                            <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded-md w-3/4"></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                displayFaqs.length > 0 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {displayFaqs.map((faq, index) => {
+                                            const style = faqStyles[index % faqStyles.length];
+                                            return (
+                                                <button key={index} onClick={() => handleSuggestion(faq.question)} className="flex items-center text-left p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:border-blue-100 dark:hover:border-slate-700 transition-all group backdrop-blur-sm">
+                                                    <div className={`p-2 rounded-lg shrink-0 ${style.bg} group-hover:scale-110 transition-transform`}>
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            {style.icon}
+                                                        </svg>
+                                                    </div>
+                                                    <span className="font-semibold text-[13px] text-[var(--text-main)] ml-3 leading-snug truncate">{faq.question}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )
+                            )}
+                        </div>
+                    )}
                     <form onSubmit={handleSubmit} className="relative group">
                         <input
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Ask your HR Assistant anything..."
-                            className="w-full bg-[var(--input-bg)] backdrop-blur-xl shadow-[0_15px_50px_rgba(0,0,0,0.05)] border border-gray-100 dark:border-slate-700 rounded-[28px] py-6 pl-8 pr-20 outline-none text-base focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200 transition-all text-[var(--text-main)]"
+                            className="w-full bg-[var(--input-bg)] backdrop-blur-xl shadow-sm border border-gray-200 dark:border-slate-700 rounded-2xl py-4 pl-6 pr-16 outline-none text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-[var(--text-main)]"
                         />
                         <button
                             type="submit"
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 w-14 h-14 bg-zuari-navy text-white rounded-[22px] flex items-center justify-center hover:bg-[#122856] transition-all shadow-xl active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zuari-navy text-white rounded-[10px] flex items-center justify-center hover:bg-[#122856] transition-all shadow active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                             disabled={isLoading}
                         >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <svg className="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 12h14M12 5l7 7-7 7"></path></svg>
                         </button>
                     </form>
-                    <p className="text-[15px] text-gray-900 text-center mt-5 font-black opacity-40">
+                    <p className="text-[11px] text-gray-500 text-center mt-3 font-semibold opacity-60">
                         AskHR can make mistakes. Check with corporate Hr team for more info.
                     </p>
                 </div>

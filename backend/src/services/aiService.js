@@ -22,7 +22,14 @@ RETRIEVED POLICY EXCERPTS
 Guidelines:
 
 - Use the retrieved policy excerpts as your primary source of information.
+- Use USER PROFILE INFORMATION for employee-specific questions.
+- (e.g., level, department, location, employment type).
+
+- Use the retrieved policy excerpts for HR policy-related questions.
+
 - If the answer is clearly stated in the excerpts, respond confidently.
++ If the answer is clearly stated in USER PROFILE INFORMATION or policy excerpts, respond confidently.
+
 - If the information is not available in the excerpts, say:
 
 "<p>This is not covered in the current HR policy. Please contact HR.</p>"
@@ -52,6 +59,7 @@ Structure your response as follows:
 
 </div>
 `;
+
 
 
 
@@ -103,6 +111,7 @@ const generateAIResponse = async (messages, user) => {
             .replace("{POLICY_TEXT}", policyText)
             .replace("{USER_DATA}", userDataString);
 
+        console.log(systemContent)
         // 3. Prepare messages for Gemini
         // Convert to Gemini format: { role: 'user' | 'model', parts: [{ text: '...' }] }
         // Input `messages` is [newest, ..., oldest]
@@ -157,6 +166,56 @@ const generateAIResponse = async (messages, user) => {
     }
 };
 
+const generateDynamicFAQs = async (policyNames) => {
+    try {
+        if (!config.GEMINI_API_KEY) {
+            return [];
+        }
+
+        const prompt = `
+You are an HR Policy Assistant. Based on the following available HR policies for the employee:
+[${policyNames.join(", ")}]
+
+Generate exactly 4 distinct Frequently Asked Questions (FAQs) that the employee might ask regarding these specific policies. 
+Ask simple questino of one sentence.
+dont include overtime question
+For each FAQ, provide the question. Do not include any greeting or explanation.
+
+Respond STRICTLY with a valid JSON array of objects. Each object must have the exact keys 'question'.
+Return ONLY the raw JSON string, no markdown ticks, no additional text.
+
+Example format:
+[
+  { "question": "What is the annual leave policy?" },
+  { "question": "Tell me about health insurance benefits." }
+]
+        `;
+
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                temperature: 0.2,
+                maxOutputTokens: 1024,
+            }
+        });
+
+        let text = response.text || (typeof response.text === 'function' ? response.text() : "");
+        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error("Failed to parse FAQ JSON from Gemini:", text);
+            return [];
+        }
+    } catch (error) {
+        console.error("Gemini FAQ Error:", error);
+        return [];
+    }
+};
+
 export default {
     generateAIResponse,
+    generateDynamicFAQs
 };

@@ -179,12 +179,22 @@ const Playground = () => {
     };
 
     return (
-        <div className="h-screen bg-slate-50 p-6 md:p-8 font-sans text-slate-800 flex flex-col overflow-hidden">
+        <div className="h-full bg-slate-50 p-2 md:p-4 font-sans text-slate-800 flex flex-col lg:flex-row overflow-hidden gap-6 min-h-0">
 
-            {/* Top Control Bar */}
-            <div className="shrink-0 bg-white rounded-3xl p-5 shadow-sm border border-slate-200 mb-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            {/* Left Sidebar Controls */}
+            <div className="shrink-0 bg-white rounded-3xl p-6 shadow-sm border border-slate-200 flex flex-col w-full lg:w-80 xl:w-96 gap-6 h-fit max-h-full">
 
-                <div className="flex flex-col md:flex-row gap-6 w-full lg:w-auto flex-1">
+                <div className="flex flex-col gap-1">
+                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        Admin Testing Area
+                    </h2>
+                    <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                        This area is for testing. Use this interface to verify if chatting with a specific policy is working correctly.
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-6 w-full">
                     {/* Entity Context */}
                     <div className="flex-1 min-w-[250px]" ref={entityRef}>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -282,7 +292,7 @@ const Playground = () => {
                 </div>
 
                 {/* Sandbox Active Badge */}
-                <div className="shrink-0 bg-blue-50 border border-blue-100 text-blue-600 px-6 py-3 rounded-xl flex items-center gap-2.5 font-bold text-xs tracking-wider shadow-sm">
+                <div className="shrink-0 bg-blue-50 border border-blue-100 text-blue-600 px-6 py-4 rounded-xl flex items-center justify-center gap-2.5 font-bold text-xs tracking-wider shadow-sm mt-2">
                     <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                     </div>
@@ -291,7 +301,7 @@ const Playground = () => {
             </div>
 
             {/* Main Chat Card */}
-            <div className="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-0">
+            <div className="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col flex-1 h-full min-h-0">
 
                 {/* Header */}
                 <div className="p-6 md:px-8 border-b border-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

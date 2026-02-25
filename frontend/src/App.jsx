@@ -45,8 +45,9 @@ const EmployeeRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   // Pure admin (no employee role) → redirect to admin dashboard
-  if (!user.roles?.includes('employee') && (user.roles?.includes('admin') || user.roles?.includes('superAdmin'))) {
-    return <Navigate to="/admin/dashboard" replace />;
+  if (!user.roles?.includes('employee')) {
+    if (user.roles?.includes('superAdmin')) return <Navigate to="/super-admin/dashboard" replace />;
+    if (user.roles?.includes('admin')) return <Navigate to="/admin/dashboard" replace />;
   }
 
   return children;

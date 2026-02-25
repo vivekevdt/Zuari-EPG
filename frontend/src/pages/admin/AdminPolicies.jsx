@@ -647,8 +647,8 @@ const AdminPolicies = () => {
                 </div>
             ) : (
                 <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700">
-                    <div className="">
-                        <table className="w-full">
+                    <div className="overflow-x-auto custom-scrollbar min-h-[400px]">
+                        <table className="w-full min-w-[1000px]">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-slate-700">
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider w-16">Index</th>
@@ -800,7 +800,7 @@ const AdminPolicies = () => {
                                                 </button>
 
                                                 {activeMenuId === policy._id && (
-                                                    <div className="absolute top-10 right-0 z-50 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 py-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                                                    <div className="absolute top-[36px] right-8 z-[9999] w-48 bg-white dark:bg-slate-800 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-slate-700 py-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
 
                                                         {/* Download */}
                                                         <button

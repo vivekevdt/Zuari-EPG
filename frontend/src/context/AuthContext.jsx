@@ -28,10 +28,6 @@ export const AuthProvider = ({ children }) => {
                 return data; // Return data but DO NOT log them in (no setUser, no localStorage)
             }
 
-            // data normally contains { _id, name, email, token }
-            // We'll store it all in localStorage for now
-            localStorage.setItem('userInfo', JSON.stringify(data));
-            setUser(data);
             return data;
         } catch (error) {
             console.error("Login error:", error);
@@ -44,8 +40,13 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const finalizeLogin = (data) => {
+        localStorage.setItem('userInfo', JSON.stringify(data));
+        setUser(data);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, finalizeLogin, logout, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );

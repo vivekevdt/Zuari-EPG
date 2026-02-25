@@ -16,7 +16,7 @@ const LoginPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showLoader, setShowLoader] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState("Initializing Workspace...");
-    const { login } = useAuth();
+    const { login, finalizeLogin } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -52,7 +52,7 @@ const LoginPage = () => {
             }, 1000);
 
             setTimeout(() => {
-                navigate('/');
+                finalizeLogin(userData);
             }, 3000);
 
         } catch (err) {
@@ -79,7 +79,7 @@ const LoginPage = () => {
             await activateAccount(email, password, newPassword);
 
             // Re-login with new password to update context/token
-            await login(email, newPassword);
+            const userData = await login(email, newPassword);
 
             setShowActivation(false);
             setIsLoading(false);
@@ -94,7 +94,7 @@ const LoginPage = () => {
             }, 1000);
 
             setTimeout(() => {
-                navigate('/');
+                finalizeLogin(userData);
             }, 3000);
 
         } catch (err) {
@@ -185,24 +185,24 @@ const LoginPage = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 flex flex-col items-center justify-center px-6 -mt-12 relative z-10">
+                <main className="flex-1 flex flex-col items-center justify-center px-4 -mt-8 relative z-10">
                     <div>
-                        <div className="animate-up mb-8 flex gap-4 ">
-                            <h1 className="animate-up text-5xl md:text-7xl font-extrabold text-center mb-4 tracking-tight">AskHR</h1>
-                            <div className="w-24 h-24 mx-auto bg-linear-to-br from-zuari-navy to-blue-600 rounded-[2rem] shadow-2xl shadow-blue-900/30 flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
-                                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        <div className="animate-up mb-6 flex gap-4 items-center justify-center">
+                            <h1 className="text-4xl md:text-5xl font-extrabold text-center tracking-tight text-zuari-navy dark:text-white drop-shadow-md">AskHR</h1>
+                            <div className="w-16 h-16 mx-auto bg-linear-to-br from-zuari-navy to-blue-600 rounded-[1.2rem] shadow-xl shadow-blue-900/30 flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
+                                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                             </div>
                         </div>
                     </div>
-                    <h2 className="animate-up text-xl md:text-2xl font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-8 text-center text-balance">Your HR Assistant</h2>
+                    <h2 className="animate-up text-base md:text-lg font-bold text-gray-600 dark:text-gray-200 uppercase tracking-[0.2em] mb-6 text-center text-balance drop-shadow-sm">Your HR Assistant</h2>
 
-                    <p className="animate-up text-gray-500 text-center max-w-xl text-lg mb-10 leading-relaxed text-balance">
+                    <p className="animate-up text-gray-700 dark:text-gray-100 text-center max-w-lg text-sm mb-8 leading-relaxed text-balance drop-shadow-sm">
                         Instant access to company guidelines, benefits, and HR procedures through AskHR.
                     </p>
 
-                    <div className="animate-up w-full max-w-md bg-transparent border border-white/20 shadow-2xl rounded-[32px] p-8 md:p-10 mb-8">
+                    <div className="animate-up w-full max-w-[380px] bg-white/10 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl p-6 md:p-8 mb-8">
                         {showActivation ? (
-                            <form onSubmit={handleActivation} className="space-y-6 animate-up">
+                            <form onSubmit={handleActivation} className="space-y-5 animate-up">
                                 <div className="text-center mb-6">
                                     <h3 className="text-xl font-bold text-zuari-navy dark:text-white">Activate Account</h3>
                                     <p className="text-xs text-zuari-navy/80 mt-2">Please set a new password to activate your account.</p>
@@ -213,7 +213,7 @@ const LoginPage = () => {
                                         type="password"
                                         value={password}
                                         disabled
-                                        className="w-full bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-2xl py-4 px-5 outline-none text-sm shadow-sm text-gray-500 cursor-not-allowed"
+                                        className="w-full bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl py-3 px-4 outline-none text-[13px] shadow-sm text-gray-500 cursor-not-allowed"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -223,7 +223,7 @@ const LoginPage = () => {
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         placeholder="Min 6 characters"
-                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl py-4 px-5 outline-none text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
+                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl py-3 px-4 outline-none text-[13px] shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -233,7 +233,7 @@ const LoginPage = () => {
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="Re-enter new password"
-                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl py-4 px-5 outline-none text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
+                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl py-3 px-4 outline-none text-[13px] shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
                                     />
                                 </div>
 
@@ -241,11 +241,11 @@ const LoginPage = () => {
                                     <div className="text-red-500 text-xs px-2">{error}</div>
                                 )}
 
-                                <button type="submit" disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-green-900/20">
+                                <button type="submit" disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-green-900/20 text-sm">
                                     {isLoading ? (
                                         <>
                                             <span>Activating...</span>
-                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                         </>
                                     ) : (
                                         <span>Activate & Login</span>
@@ -253,10 +253,10 @@ const LoginPage = () => {
                                 </button>
                             </form>
                         ) : showForgotPassword ? (
-                            <form onSubmit={handleForgotPassword} className="space-y-6 animate-up">
-                                <div className="text-center mb-6">
-                                    <h3 className="text-xl font-bold text-zuari-navy dark:text-white">Reset Password</h3>
-                                    <p className="text-xs text-zuari-navy/80 mt-2">Enter your email to receive a temporary password.</p>
+                            <form onSubmit={handleForgotPassword} className="space-y-5 animate-up">
+                                <div className="text-center mb-5">
+                                    <h3 className="text-lg font-bold text-zuari-navy dark:text-white">Reset Password</h3>
+                                    <p className="text-[11px] text-zuari-navy/80 mt-1.5">Enter your email to receive a temporary password.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold uppercase tracking-widest text-zuari-navy ml-1">Work Email</label>
@@ -265,7 +265,7 @@ const LoginPage = () => {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="name@company.com"
-                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl py-4 px-5 outline-none text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
+                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl py-3 px-4 outline-none text-[13px] shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
                                     />
                                 </div>
 
@@ -277,39 +277,39 @@ const LoginPage = () => {
                                     <button
                                         type="button"
                                         onClick={() => { setShowForgotPassword(false); setError(''); }}
-                                        className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl font-bold transition-all"
+                                        className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold transition-all text-sm"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="flex-1 py-4 bg-zuari-navy hover:bg-[#122856] text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-900/20"
+                                        className="flex-1 py-3 bg-zuari-navy hover:bg-[#122856] text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20 text-sm"
                                     >
                                         {isLoading ? 'Sending...' : 'Send Email'}
                                     </button>
                                 </div>
                             </form>
                         ) : (
-                            <form onSubmit={handleSubmit} className="space-y-6">
+                            <form onSubmit={handleSubmit} className="space-y-5">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-zuari-navy ml-1">Work Email</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-zuari-navy dark:text-gray-100 ml-1">Work Email</label>
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="name@company.com"
-                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl py-4 px-5 outline-none text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
+                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl py-3 px-4 outline-none text-[13px] shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-zuari-navy ml-1">Password</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-zuari-navy dark:text-gray-100 ml-1">Password</label>
                                     <input
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
-                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl py-4 px-5 outline-none text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
+                                        className="w-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl py-3 px-4 outline-none text-[13px] shadow-sm focus:ring-2 focus:ring-blue-500/20 transition-all text-current"
                                     />
                                 </div>
 
@@ -317,21 +317,21 @@ const LoginPage = () => {
                                     <button
                                         type="button"
                                         onClick={() => { setShowForgotPassword(true); setError(''); }}
-                                        className="text-[10px] font-bold uppercase tracking-widest text-zuari-navy hover:text-blue-700 transition-colors"
+                                        className="text-[10px] font-bold uppercase tracking-widest text-[#1a51a8] dark:text-blue-300 hover:text-blue-700 transition-colors drop-shadow"
                                     >
                                         Forgot Password?
                                     </button>
                                 </div>
 
                                 {error && (
-                                    <div className="text-red-400 text-xs px-2 font-semibold">{error}</div>
+                                    <div className="text-red-600 dark:text-red-400 text-xs px-2 font-bold">{error}</div>
                                 )}
 
-                                <button type="submit" disabled={isLoading} className="w-full bg-zuari-navy hover:bg-[#122856] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-blue-900/20 border border-transparent hover:border-blue-400">
+                                <button type="submit" disabled={isLoading} className="w-full bg-zuari-navy hover:bg-[#122856] text-white font-bold py-3 text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-transparent hover:border-blue-400 active:scale-[0.98]">
                                     {isLoading ? (
                                         <>
                                             <span>Authenticating...</span>
-                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                         </>
                                     ) : (
                                         <span>Log In to Dashboard</span>

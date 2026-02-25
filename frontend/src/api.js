@@ -154,6 +154,23 @@ export const getAvailableEmployeePolicies = async () => {
     }
 };
 
+export const getDynamicFAQs = async (policies) => {
+    try {
+        const response = await fetch(`${API_URL}/api/chat/faqs`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ policies }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch dynamic FAQs');
+        }
+        return data.data; // This returns the array of 4 JSON FAQ objects
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const deleteConversation = async (conversationId) => {
     try {
         const response = await fetch(`${API_URL}/api/chat/${conversationId}`, {

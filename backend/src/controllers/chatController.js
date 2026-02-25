@@ -213,11 +213,34 @@ const getAvailablePolicies = async (req, res, next) => {
     }
 };
 
+// @desc    Get dynamic FAQs based on active policies
+// @route   POST /api/chat/faqs
+// @access  Private
+const getDynamicFAQs = async (req, res, next) => {
+    try {
+        const { policies } = req.body;
+        if (!policies || !Array.isArray(policies) || policies.length === 0) {
+            return res.status(400).json({ success: false, message: 'Policies array is required' });
+        }
+
+        const faqs = await aiService.generateDynamicFAQs(policies);
+
+        res.status(200).json({
+            statusCode: 200,
+            success: true,
+            data: faqs
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export {
     createConversation,
     getConversations,
     getMessages,
     sendMessage,
     deleteConversation,
-    getAvailablePolicies
+    getAvailablePolicies,
+    getDynamicFAQs
 };
