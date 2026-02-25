@@ -483,6 +483,22 @@ export const playgroundChat = async (message, entity, policies) => {
     }
 };
 
+export const resetPlaygroundChat = async () => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/playground/chat/reset`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to reset chat memory');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const getVectorDbData = async (filters) => {
     try {
         const queryParams = new URLSearchParams(filters).toString();
@@ -523,7 +539,7 @@ export const downloadEmployeeTemplate = async () => {
     }
 };
 
-export const uploadEmployees = async (file) => {
+export const previewEmployeesCsv = async (file) => {
     try {
         const formData = new FormData();
         formData.append('file', file);
@@ -531,7 +547,7 @@ export const uploadEmployees = async (file) => {
         const userInfo = localStorage.getItem('userInfo');
         const token = userInfo ? JSON.parse(userInfo).token : null;
 
-        const response = await fetch(`${API_URL}/api/admin/upload-employees`, {
+        const response = await fetch(`${API_URL}/api/admin/preview-employees-csv`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -540,7 +556,24 @@ export const uploadEmployees = async (file) => {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || 'Failed to upload employees');
+            throw new Error(data.message || 'Failed to preview CSV');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const bulkCreateEmployees = async (employees) => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/bulk-upload-employees`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ employees }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to bulk create employees');
         }
         return data;
     } catch (error) {

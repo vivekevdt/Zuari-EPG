@@ -3,6 +3,8 @@ import Conversation from '../models/Conversation.js';
 import Entity from '../models/Entity.js';
 import Policy from '../models/Policy.js';
 import Log from '../models/Log.js';
+import EmployeeCategory from '../models/EmployeeCategory.js';
+import ImpactLevel from '../models/ImpactLevel.js';
 // We will need a service to handle chunking logic, but for now we can simulate or create a placeholder
 import { processPolicyFile, publishPolicy as publishPolicyService, deleteChunks } from '../services/chunkService.js';
 import XLSX from 'xlsx';
@@ -76,7 +78,6 @@ const getUsers = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id);
-        console.log(user)
 
         if (user) {
             await User.findByIdAndDelete(req.params.id);
@@ -741,94 +742,192 @@ const downloadEmployeeTemplate = async (req, res, next) => {
     }
 };
 
-// @desc    Upload employees via CSV
-// @route   POST /api/admin/upload-employees
+// @desc    Upload & preview employees via CSV (Validates without saving)
+// @route   POST /api/admin/preview-employees-csv
 // @access  Private/Admin
-const uploadEmployees = async (req, res, next) => {
+const previewEmployeesCsv = async (req, res, next) => {
     try {
         if (!req.file) {
             res.status(400);
             return next(new Error('Please upload a file'));
         }
 
-        // Use XLSX to read the file (supports both .xlsx and .csv)
         const workbook = XLSX.readFile(req.file.path);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-
-        // Convert sheet to JSON
-        // format uses headers from first row
         const results = XLSX.utils.sheet_to_json(worksheet);
+
+        try { fs.unlinkSync(req.file.path); } catch (e) { console.error("Error deleting temp file", e); }
+
+        if (results.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No records found in the file",
+                errors: ["File appears to be empty or effectively empty"]
+            });
+        }
+
+        const entities = await Entity.find({}, '_id name entityCode');
+        const categories = await EmployeeCategory.find({}, '_id name code');
+        const impactLevels = await ImpactLevel.find({}, '_id name entity');
+
+        const entityMap = {};
+        entities.forEach(e => {
+            if (e.name) entityMap[e.name.toLowerCase()] = e;
+            if (e.entityCode) entityMap[e.entityCode.toLowerCase()] = e;
+        });
+
+        const categoryMap = {};
+        categories.forEach(c => {
+            if (c.name) categoryMap[c.name.toLowerCase()] = c;
+            if (c.code) categoryMap[c.code.toLowerCase()] = c;
+        });
+
+        const impactLevelMap = {};
+        impactLevels.forEach(il => {
+            if (il.name && il.entity) {
+                let key = `${il.name.toLowerCase()}_${il.entity.toString()}`;
+                impactLevelMap[key] = il;
+            }
+            if (il.name && !impactLevelMap[il.name.toLowerCase()]) {
+                impactLevelMap[il.name.toLowerCase()] = il;
+            }
+        });
+
+        const validationResults = [];
+        let validCount = 0;
+
+        for (let i = 0; i < results.length; i++) {
+            const row = results[i];
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+                normalizedRow[key.trim().toLowerCase().replace(/ /g, '_')] = row[key];
+            });
+
+            const name = normalizedRow.full_name || normalizedRow.name || normalizedRow.employee_name;
+            const email = normalizedRow.email || normalizedRow.email_address;
+            const role = (normalizedRow.role || 'employee').toLowerCase();
+            const entityStr = normalizedRow.entity_name || normalizedRow.entity || normalizedRow.company;
+            const levelStr = normalizedRow.employee_level || normalizedRow.level || normalizedRow.grade;
+            const categoryStr = normalizedRow.category || normalizedRow.emp_category || normalizedRow.employee_category;
+            const status = (normalizedRow.status || 'active').toLowerCase();
+            const entityCodeStr = normalizedRow.entity_code || normalizedRow.code || normalizedRow.entity;
+            const password = normalizedRow.password || 'Welcome@1234';
+
+            const rowErrors = [];
+            const fieldErrors = {};
+
+            if (!name) fieldErrors.name = 'Missing name';
+            if (!email) fieldErrors.email = 'Missing email';
+            if (!entityStr && !entityCodeStr) fieldErrors.entity = 'Missing entity or code';
+
+            if (!email || !name || (!entityStr && !entityCodeStr)) {
+                if (Object.keys(normalizedRow).length > 0) {
+                    rowErrors.push(`Missing required fields (Name, Email, Entity/Entity Code)`);
+                } else {
+                    continue; // Skip completely empty rows
+                }
+            }
+
+            let entityObj = null;
+            if (entityCodeStr) entityObj = entityMap[entityCodeStr.toLowerCase()];
+            if (!entityObj && entityStr) entityObj = entityMap[entityStr.toLowerCase()];
+
+            if (!entityObj && (entityStr || entityCodeStr)) {
+                rowErrors.push(`Entity code/name '${entityCodeStr || entityStr}' not present in system`);
+                fieldErrors.entity = 'Entity not found';
+            }
+
+            let categoryObj = null;
+            if (categoryStr) {
+                categoryObj = categoryMap[categoryStr.toLowerCase()];
+                if (!categoryObj) {
+                    rowErrors.push(`Employee category '${categoryStr}' not present in system`);
+                    fieldErrors.category = 'Category not found';
+                }
+            }
+
+            let levelObj = null;
+            if (levelStr) {
+                if (entityObj) {
+                    let key = `${levelStr.toLowerCase()}_${entityObj._id.toString()}`;
+                    levelObj = impactLevelMap[key] || impactLevelMap[levelStr.toLowerCase()];
+                } else {
+                    levelObj = impactLevelMap[levelStr.toLowerCase()];
+                }
+                if (!levelObj) {
+                    rowErrors.push(`Impact level '${levelStr}' not present in system`);
+                    fieldErrors.level = 'Level not found';
+                }
+            }
+
+            const isValid = rowErrors.length === 0;
+            if (isValid) validCount++;
+
+            validationResults.push({
+                rowNumber: i + 1,
+                originalData: { name, email, role, entityStr, levelStr, categoryStr, status, entityCodeStr, password },
+                parsedData: isValid ? {
+                    name, email, password, role, entityId: entityObj._id, levelId: levelObj?._id || null, status,
+                    entityCode: entityCodeStr || entityObj.entityCode, categoryId: categoryObj?._id || null
+                } : null,
+                errors: rowErrors,
+                fieldErrors: fieldErrors,
+                isValid
+            });
+        }
+
+
+        res.status(200).json({
+            success: true,
+            data: {
+                results: validationResults,
+                stats: { total: validationResults.length, valid: validCount, invalid: validationResults.length - validCount }
+            }
+        });
+
+    } catch (error) {
+        if (req.file && fs.existsSync(req.file.path)) try { fs.unlinkSync(req.file.path); } catch (e) { }
+        next(error);
+    }
+
+};
+
+// @desc    Bulk create employees from validated preview data
+// @route   POST /api/admin/bulk-upload-employees
+// @access  Private/Admin
+const bulkCreateEmployees = async (req, res, next) => {
+    try {
+        const { employees } = req.body;
+        if (!employees || !Array.isArray(employees)) {
+            return res.status(400).json({ success: false, message: 'Invalid employee data' });
+        }
 
         let successCount = 0;
         let errorCount = 0;
         const errors = [];
 
-        // Clean up file immediately after reading
-        try {
-            fs.unlinkSync(req.file.path);
-        } catch (e) {
-            console.error("Error deleting temp file", e);
-        }
-
-        if (results.length === 0) {
-            res.status(200).json({
-                success: true,
-                message: "No records found in the file",
-                errors: ["File appears to be empty or effectively empty"]
-            });
-            return;
-        }
-
-        for (const row of results) {
+        for (const emp of employees) {
             try {
-                // Normalize keys to lower case to handle "Full Name" vs "full_name" vs "Name"
-                const normalizedRow = {};
-                Object.keys(row).forEach(key => {
-                    normalizedRow[key.trim().toLowerCase().replace(/ /g, '_')] = row[key];
-                });
-
-                // Map columns to User model fields
-                // Possible variations based on common template usage
-                const name = normalizedRow.full_name || normalizedRow.name || normalizedRow.employee_name;
-                const email = normalizedRow.email || normalizedRow.email_address;
-                const role = (normalizedRow.role || 'user').toLowerCase();
-                const entity = normalizedRow.entity_name || normalizedRow.entity || normalizedRow.company;
-                const level = normalizedRow.employee_level || normalizedRow.level || normalizedRow.grade;
-                const status = (normalizedRow.status || 'active').toLowerCase();
-                const entity_code = normalizedRow.entity_code || normalizedRow.code;
-                const password = normalizedRow.password || 'Welcome@1234';
-
-                if (!email || !name || !entity) {
-                    errorCount++;
-                    // Only push error if it's not a completely empty row (xlsx sometimes reads empty bottom rows)
-                    if (Object.keys(normalizedRow).length > 0) {
-                        errors.push(`Missing required fields (Name, Email, Entity) for row: ${JSON.stringify(row)}`);
-                    }
-                    continue;
-                }
-
-                // calling authService to register (handles hashing and duplicates)
-                await authService.registerUser(name, email, password, role, entity, level, status, entity_code);
+                await authService.registerUser(
+                    emp.name, emp.email, emp.password, emp.role,
+                    emp.entityId, emp.levelId, emp.status,
+                    emp.entityCode, emp.categoryId, true
+                );
                 successCount++;
-
             } catch (err) {
                 errorCount++;
-                errors.push(`Error processing ${row.email || 'unknown row'}: ${err.message}`);
+                errors.push(`Error creating ${emp.email || 'user'}: ${err.message}`);
             }
         }
 
         res.status(200).json({
             success: true,
-            message: `Processed ${results.length} records. Created: ${successCount}. Failed: ${errorCount}`,
+            message: `Processed ${employees.length} records. Created: ${successCount}. Failed: ${errorCount}`,
             errors: errors.length > 0 ? errors : undefined
         });
 
     } catch (error) {
-        // Try to cleanup if error occurred before unlink
-        if (req.file && fs.existsSync(req.file.path)) {
-            try { fs.unlinkSync(req.file.path); } catch (e) { }
-        }
         next(error);
     }
 };
@@ -844,7 +943,8 @@ export {
     updateEntity,
     deleteEntity,
     downloadEmployeeTemplate,
-    uploadEmployees,
+    previewEmployeesCsv,
+    bulkCreateEmployees,
     getPolicies,
     uploadPolicy,
     getLogs,

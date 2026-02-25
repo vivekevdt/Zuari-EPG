@@ -19,11 +19,12 @@ import {
     updatePolicy,
     publishPolicy,
     downloadEmployeeTemplate,
-    uploadEmployees,
+    previewEmployeesCsv,
+    bulkCreateEmployees,
     getArchivedPolicies
 } from '../controllers/adminController.js';
 
-import { handlePlaygroundChat } from '../controllers/playground/playgroundController.js';
+import { handlePlaygroundChat, handlePlaygroundReset } from '../controllers/playground/playgroundController.js';
 import {
     getConfigEntities, createConfigEntity, updateConfigEntity, deleteConfigEntity,
     getImpactLevels, createImpactLevel, updateImpactLevel, deleteImpactLevel,
@@ -101,7 +102,8 @@ router.get('/dashboard-stats', protect, admin, getDashboardStats);
 // User Management
 router.get('/users', protect, admin, getUsers);
 router.get('/download-template', protect, admin, downloadEmployeeTemplate);
-router.post('/upload-employees', protect, admin, uploadCsv.single('file'), uploadEmployees);
+router.post('/preview-employees-csv', protect, admin, uploadCsv.single('file'), previewEmployeesCsv);
+router.post('/bulk-upload-employees', protect, admin, bulkCreateEmployees);
 router.put('/users/:id', protect, admin, updateUser);
 router.delete('/users/:id', protect, admin, deleteUser);
 
@@ -130,6 +132,7 @@ router.get('/logs', protect, admin, getLogs);
 
 // Playground Chat
 router.post('/playground/chat', protect, admin, handlePlaygroundChat);
+router.post('/playground/chat/reset', protect, admin, handlePlaygroundReset);
 
 // ── Config Routes ──────────────────────────────────────────────────────────
 // Entities

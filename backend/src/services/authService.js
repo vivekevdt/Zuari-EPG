@@ -22,10 +22,11 @@ const loginUser = async (email, password) => {
     }
 };
 
-const registerUser = async (name, email, password, roles, entity, level, status, entity_code, empCategory) => {
+const registerUser = async (name, email, password, roles, entity, level, status, entity_code, empCategory, skipIfExists = false) => {
     const userExists = await User.findOne({ email });
 
     if (userExists) {
+        if (skipIfExists) return userExists;
         throw new Error('User already exists');
     }
 

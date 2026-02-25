@@ -15,11 +15,12 @@ const createTestUser = async () => {
     connectDB();
     try {
 
+
         const testUser = {
             name: 'Super Admin',
             email: 'superadmin@adventz.com',
             password: 'superadmin@1234',
-            roles: ["superAdmin"],
+            roles: ["superadmin"],
             entity: null
         };
 

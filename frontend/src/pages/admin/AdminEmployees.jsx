@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
     getAdminUsers, createUser, deleteUser, updateUser,
-    uploadEmployees, downloadEmployeeTemplate,
+    previewEmployeesCsv, bulkCreateEmployees, downloadEmployeeTemplate,
     getConfigEntities, getImpactLevels, getEmployeeCategories,
 } from '../../api';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -46,6 +46,8 @@ const AdminEmployees = () => {
     const [loading, setLoading] = useState(true);
     const [creationMode, setCreationMode] = useState(null); // 'manual' | 'bulk' | null
     const [uploadFile, setUploadFile] = useState(null);
+    const [previewData, setPreviewData] = useState(null);
+    const [previewStats, setPreviewStats] = useState(null);
 
     const emptyForm = {
         name: '',
@@ -216,22 +218,44 @@ const AdminEmployees = () => {
 
     // ── Bulk upload ────────────────────────────────────────────────────────
     const handleFileChange = (e) => {
-        if (e.target.files?.length > 0) setUploadFile(e.target.files[0]);
+        if (e.target.files?.length > 0) {
+            setUploadFile(e.target.files[0]);
+            setPreviewData(null);
+            setPreviewStats(null);
+        }
     };
 
     const handleUpload = async () => {
         if (!uploadFile) return toast.error('Please select a file');
         setIsSubmitting(true);
         try {
-            const res = await uploadEmployees(uploadFile);
+            const data = await previewEmployeesCsv(uploadFile);
+            setPreviewData(data.results);
+            setPreviewStats(data.stats);
+        } catch (err) {
+            toast.error(err.message || 'Failed to parse file');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleConfirmImport = async () => {
+        const validRows = previewData.filter(row => row.isValid).map(row => row.parsedData);
+        if (validRows.length === 0) return toast.error('No valid rows to import');
+
+        setIsSubmitting(true);
+        try {
+            const res = await bulkCreateEmployees(validRows);
             toast.success(res.message);
-            res.errors?.forEach(err => toast.error(err, { duration: 5000 }));
+            res.errors?.forEach(err => toast.error(err, { duration: 6000 }));
             const updatedUsers = await getAdminUsers();
             setUsers(updatedUsers);
+            setPreviewData(null);
+            setPreviewStats(null);
             setUploadFile(null);
-            document.getElementById('csvInput').value = '';
+            if (document.getElementById('csvInput')) document.getElementById('csvInput').value = '';
         } catch (err) {
-            toast.error(err.message || 'Failed to upload');
+            toast.error(err.message || 'Failed to import employees');
         } finally {
             setIsSubmitting(false);
         }
@@ -416,47 +440,150 @@ const AdminEmployees = () => {
                             </>
                         ) : (
                             /* ── Bulk Upload ── */
-                            <div className="text-center flex flex-col items-center justify-center py-12">
-                                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-500">
-                                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                    </svg>
+                            previewData ? (
+                                <div className="py-6 animate-up">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-gray-800 dark:text-white">Review Import Data</h3>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                We found <span className="font-bold text-red-500">{previewStats.invalid} issues</span> across {previewStats.total} records.
+                                                {previewStats.invalid > 0 && " Hover over the error badge to see details."}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 max-h-[400px] overflow-y-auto mb-6">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-10">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">#</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Name</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Email</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Entity</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Level</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Category</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Role</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                                                {previewData.map((row) => (
+                                                    <tr key={row.rowNumber} className={!row.isValid ? 'bg-red-50/20 dark:bg-red-900/10' : ''}>
+                                                        <td className="px-4 py-3 text-gray-500 align-top pt-5">{row.rowNumber}</td>
+                                                        <td className="px-4 py-3 align-top">
+                                                            <div className={`p-2 rounded-lg transition-colors ${row.fieldErrors?.name ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200' : 'text-gray-900 dark:text-white'}`}>
+                                                                <div className="font-medium">{row.originalData.name || '—'}</div>
+                                                                {row.fieldErrors?.name && <div className="text-[10px] font-bold text-red-600 dark:text-red-400 mt-1">{row.fieldErrors.name}</div>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 align-top">
+                                                            <div className={`p-2 rounded-lg transition-colors ${row.fieldErrors?.email ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                                <div>{row.originalData.email || '—'}</div>
+                                                                {row.fieldErrors?.email && <div className="text-[10px] font-bold text-red-600 dark:text-red-400 mt-1">{row.fieldErrors.email}</div>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 align-top">
+                                                            <div className={`p-2 rounded-lg transition-colors ${row.fieldErrors?.entity ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                                <div>{row.originalData.entityCodeStr || row.originalData.entityStr || '—'}</div>
+                                                                {row.fieldErrors?.entity && <div className="text-[10px] font-bold text-red-600 dark:text-red-400 mt-1">{row.fieldErrors.entity}</div>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 align-top">
+                                                            <div className={`p-2 rounded-lg transition-colors ${row.fieldErrors?.level ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                                <div>{row.originalData.levelStr || '—'}</div>
+                                                                {row.fieldErrors?.level && <div className="text-[10px] font-bold text-red-600 dark:text-red-400 mt-1">{row.fieldErrors.level}</div>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 align-top">
+                                                            <div className={`p-2 rounded-lg transition-colors ${row.fieldErrors?.category ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                                <div>{row.originalData.categoryStr || '—'}</div>
+                                                                {row.fieldErrors?.category && <div className="text-[10px] font-bold text-red-600 dark:text-red-400 mt-1">{row.fieldErrors.category}</div>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 align-top">
+                                                            <div className="p-2 text-gray-600 dark:text-gray-400 capitalize">{row.originalData.role || '—'}</div>
+                                                        </td>
+                                                        <td className="px-4 py-3 align-top pt-5">
+                                                            {row.isValid ? (
+                                                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">VALID</span>
+                                                            ) : (
+                                                                <div className="relative group inline-block">
+                                                                    <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold cursor-help">ERRORS</span>
+                                                                    <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 hidden group-hover:block w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-20 whitespace-normal">
+                                                                        {row.errors?.map((err, i) => <div key={i}>• {err}</div>)}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="flex items-center justify-between border-t border-gray-100 dark:border-slate-700 pt-6">
+                                        <div className="text-sm text-gray-500 italic">
+                                            {previewStats.invalid > 0 ? `${previewStats.invalid} rows will be skipped during import.` : 'All rows are valid and ready to import.'}
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => { setPreviewData(null); setPreviewStats(null); setUploadFile(null); if (document.getElementById('csvInput')) document.getElementById('csvInput').value = ''; }}
+                                                className="px-6 py-3 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={handleConfirmImport} disabled={isSubmitting || previewStats.valid === 0}
+                                                className="px-6 py-3 bg-zuari-navy hover:bg-[#122856] text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all disabled:opacity-50"
+                                            >
+                                                {isSubmitting ? 'Importing...' : `Complete Import (${previewStats.valid})`}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Upload Users CSV</h3>
-                                <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">Import your CSV file to bulk-create users. Ensure required headers are present.</p>
-
-                                <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileChange} />
-
-                                <div className="flex gap-4 w-full max-w-md mx-auto">
-                                    <button
-                                        onClick={() => document.getElementById('csvInput').click()}
-                                        className="flex-1 py-3 bg-zuari-navy text-white rounded-2xl font-bold hover:bg-[#122856] transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            ) : (
+                                <div className="text-center flex flex-col items-center justify-center py-12">
+                                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-500">
+                                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                         </svg>
-                                        {uploadFile ? uploadFile.name.substring(0, 15) + (uploadFile.name.length > 15 ? '...' : '') : 'Choose File'}
-                                    </button>
-                                    <button
-                                        onClick={downloadEmployeeTemplate}
-                                        className="flex-1 py-3 border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                        Template
-                                    </button>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Upload Users CSV</h3>
+                                    <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">Import your CSV file to bulk-create users. Ensure required headers are present.</p>
+
+                                    <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileChange} />
+
+                                    <div className="flex gap-4 w-full max-w-md mx-auto">
+                                        <button
+                                            onClick={() => document.getElementById('csvInput').click()}
+                                            className="flex-1 py-3 bg-zuari-navy text-white rounded-2xl font-bold hover:bg-[#122856] transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            {uploadFile ? uploadFile.name.substring(0, 15) + (uploadFile.name.length > 15 ? '...' : '') : 'Choose File'}
+                                        </button>
+                                        <button
+                                            onClick={downloadEmployeeTemplate}
+                                            className="flex-1 py-3 border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                            Template
+                                        </button>
+                                    </div>
+
+                                    {uploadFile && (
+                                        <button
+                                            onClick={handleUpload} disabled={isSubmitting}
+                                            className="w-full max-w-md mx-auto mt-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-green-900/20 disabled:opacity-70"
+                                        >
+                                            {isSubmitting ? 'Processing...' : 'Upload & Process'}
+                                        </button>
+                                    )}
                                 </div>
-
-                                {uploadFile && (
-                                    <button
-                                        onClick={handleUpload} disabled={isSubmitting}
-                                        className="w-full max-w-md mx-auto mt-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-green-900/20 disabled:opacity-70"
-                                    >
-                                        {isSubmitting ? 'Uploading...' : 'Upload & Process'}
-                                    </button>
-                                )}
-                            </div>
+                            )
                         )}
                     </div>
                 </div>

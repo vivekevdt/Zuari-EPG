@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getPolicies, playgroundChat } from '../api';
+import { getPolicies, getEntities, playgroundChat, resetPlaygroundChat } from '../api';
 
 const Playground = () => {
     // Data State
@@ -14,24 +14,23 @@ const Playground = () => {
     // UI State
     const [isEntityOpen, setIsEntityOpen] = useState(false);
     const [isPolicyOpen, setIsPolicyOpen] = useState(false);
-    const [input, setInput] = useState("Explain the medical benefits");
+    const [input, setInput] = useState("");
 
     const entityRef = useRef(null);
     const policyRef = useRef(null);
 
-    // Hardcoded Entity List
-    const AVAILABLE_ENTITIES = [
-        { code: 'ZIL', name: 'Zuari Industries Ltd' },
-        { code: 'ZIIL', name: 'Zuari Infraworld India Ltd' },
-        { code: 'SIL', name: 'Simon India Ltd' },
-        { code: 'ZIntL', name: 'Zuari International' },
-        { code: 'ZFL', name: 'Zuari Finserv Ltd' },
-        { code: 'ZIBL', name: 'Zuari Insurance Brokers Ltd' },
-        { code: 'ZMSL', name: 'Zuari Management Services Ltd' },
-        { code: 'FFPL', name: 'Forte Furniture Products India Pvt Ltd' },
-        { code: 'IFPL', name: 'Indian Furniture Private Ltd' },
-        { code: 'ZEBPL', name: 'Zuari Envien Bioenergy Pvt Ltd' }
-    ];
+    // Initial Fetch for Entities
+    useEffect(() => {
+        const fetchEntities = async () => {
+            try {
+                const data = await getEntities();
+                setEntities(data);
+            } catch (error) {
+                console.error("Error fetching entities:", error);
+            }
+        };
+        fetchEntities();
+    }, []);
 
     // Click Outside Handling
     useEffect(() => {
@@ -51,10 +50,15 @@ const Playground = () => {
     const availablePolicies = React.useMemo(() => {
         if (!selectedEntity || allPolicies.length === 0) return [];
         return allPolicies.filter(p => {
-            // Policy entity logic: if policy has specific entity, match it. If 'all' or empty, it's global.
-            // Assuming strict matching or global policies.
-            const pEnt = p.entity ? p.entity.trim() : '';
-            return (!pEnt || pEnt.toLowerCase() === 'all' || pEnt === selectedEntity.name);
+            if (!p.entity || p.entity.length === 0) return true;
+
+            const pEnts = Array.isArray(p.entity) ? p.entity : [p.entity];
+            return pEnts.some(ent => {
+                if (typeof ent === 'object') {
+                    return ent._id === selectedEntity._id || ent.name === selectedEntity.name;
+                }
+                return ent === selectedEntity._id || ent === selectedEntity.name || String(ent).toLowerCase() === 'all';
+            });
         });
     }, [selectedEntity, allPolicies]);
 
@@ -80,9 +84,10 @@ const Playground = () => {
 
     const togglePolicy = (policy) => {
         if (selectedPolicies.find(p => p._id === policy._id)) {
-            setSelectedPolicies(selectedPolicies.filter(p => p._id !== policy._id));
+            setSelectedPolicies([]);
         } else {
-            setSelectedPolicies([...selectedPolicies, policy]);
+            setSelectedPolicies([policy]);
+            setIsPolicyOpen(false); // Auto close on select
         }
     };
 
@@ -106,6 +111,22 @@ const Playground = () => {
         scrollToBottom();
     }, [messages, isThinking]);
 
+    const handleResetChat = async () => {
+        try {
+            await resetPlaygroundChat();
+        } catch (error) {
+            console.error("Failed to reset backend memory:", error);
+        }
+
+        setMessages([
+            { role: 'ai', content: '<p>Environment initialized. I am ready to process queries using the selected policy logic.</p><p>How would you like to test the cross-policy enforcement today?</p>' }
+        ]);
+        setInput('');
+        setSelectedEntity(null);
+        setSelectedPolicies([]);
+        setIsThinking(false);
+    };
+
     const handleSendMessage = async () => {
         if (!input.trim() || isThinking) return;
 
@@ -116,10 +137,10 @@ const Playground = () => {
 
         try {
             const policyNames = selectedPolicies.map(p => p.title);
-            const entityName = selectedEntity ? selectedEntity.name : null;
+            const entityId = selectedEntity ? selectedEntity._id : null;
 
             // Call the NEW separate playground API
-            const response = await playgroundChat(userMsg, entityName, policyNames);
+            const response = await playgroundChat(userMsg, entityId, policyNames);
 
             setMessages(prev => [...prev, { role: 'ai', content: response }]);
         } catch (error) {
@@ -158,10 +179,10 @@ const Playground = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans text-slate-800">
+        <div className="h-screen bg-slate-50 p-6 md:p-8 font-sans text-slate-800 flex flex-col overflow-hidden">
 
             {/* Top Control Bar */}
-            <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 mb-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="shrink-0 bg-white rounded-3xl p-5 shadow-sm border border-slate-200 mb-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
 
                 <div className="flex flex-col md:flex-row gap-6 w-full lg:w-auto flex-1">
                     {/* Entity Context */}
@@ -184,14 +205,14 @@ const Playground = () => {
                             {/* Dropdown Menu */}
                             {isEntityOpen && (
                                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto p-1">
-                                    {AVAILABLE_ENTITIES.map(entity => (
+                                    {entities.map(entity => (
                                         <div
-                                            key={entity.code}
+                                            key={entity._id}
                                             onClick={() => handleEntitySelect(entity)}
-                                            className={`px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer transition-colors flex items-center justify-between ${selectedEntity?.code === entity.code ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            className={`px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer transition-colors flex items-center justify-between ${selectedEntity?._id === entity._id ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'}`}
                                         >
                                             <span>{entity.name}</span>
-                                            {selectedEntity?.code === entity.code && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>}
+                                            {selectedEntity?._id === entity._id && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>}
                                         </div>
                                     ))}
                                 </div>
@@ -203,7 +224,7 @@ const Playground = () => {
                     <div className="flex-[1.5] min-w-[300px]" ref={policyRef}>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                            Target Policies (Multiple)
+                            Target Policy (Single)
                         </label>
                         <div className="relative">
                             <div
@@ -225,7 +246,7 @@ const Playground = () => {
                                         ))
                                     ) : (
                                         <span className="text-slate-400 px-2 font-medium">
-                                            {!selectedEntity ? 'Select an Entity first' : 'Select Policies...'}
+                                            {!selectedEntity ? 'Select an Entity first' : 'Select a Policy...'}
                                         </span>
                                     )}
                                 </div>
@@ -270,7 +291,7 @@ const Playground = () => {
             </div>
 
             {/* Main Chat Card */}
-            <div className="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col min-h-[650px]">
+            <div className="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-0">
 
                 {/* Header */}
                 <div className="p-6 md:px-8 border-b border-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -284,24 +305,22 @@ const Playground = () => {
                         <div>
                             <h2 className="text-xl font-bold text-slate-800">Policy Expert AI</h2>
                             <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1">
-                                {selectedEntity ? selectedEntity.name : 'NO CONTEXT'} • {selectedPolicies.length > 0 ? `${selectedPolicies.length} POLICIES ACTIVE` : 'NO POLICIES'}
+                                {selectedEntity ? selectedEntity.name : 'NO CONTEXT'} • {selectedPolicies.length > 0 ? selectedPolicies[0].title : 'NO POLICY'}
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button className="p-2 text-slate-300 hover:text-red-400 transition-colors">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                        <button className="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all shadow-lg shadow-slate-900/20">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            Export Logs
+
+                        <button onClick={handleResetChat} className="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all shadow-lg shadow-slate-900/20 cursor-pointer">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Reset
                         </button>
                     </div>
                 </div>
 
                 {/* Chat Area */}
-                <div className="flex-1 p-8 bg-white overflow-y-auto max-h-[600px]">
+                <div className="flex-1 p-8 bg-white overflow-y-auto min-h-0">
 
                     {messages.map((msg, index) => (
                         <div key={index} className={`flex gap-4 max-w-3xl mb-6 ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}>
@@ -356,25 +375,6 @@ const Playground = () => {
 
                 {/* Footer Input Area */}
                 <div className="p-8 bg-white border-t border-slate-50 mt-auto">
-                    {/* Quick Suggestions */}
-                    <div className="flex flex-wrap gap-3 mb-6">
-                        {[
-                            { label: 'Annual Leave', icon: '🏖️' },
-                            { label: 'Hybrid Work', icon: '🏠' },
-                            { label: 'Probation Rules', icon: '⏳' },
-                            { label: 'Medical Plan', icon: '🏥' }
-                        ].map((item, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => setInput(`Tell me about ${item.label}`)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-white hover:shadow-md border border-slate-200 hover:border-blue-200 rounded-full text-xs font-bold text-slate-600 hover:text-blue-600 transition-all"
-                            >
-                                <span>{item.icon}</span>
-                                {item.label}
-                            </button>
-                        ))}
-                    </div>
-
                     {/* Input Field */}
                     <div className="relative group">
                         <input
@@ -391,7 +391,7 @@ const Playground = () => {
                             disabled={!input.trim() || isThinking}
                             className={`absolute right-2 top-2 bottom-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all transform active:scale-95 ${!input.trim() || isThinking ? 'bg-slate-300 shadow-none cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'}`}
                         >
-                            <svg className="w-5 h-5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                            <svg className="w-5 h-5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
                         </button>
                     </div>
 

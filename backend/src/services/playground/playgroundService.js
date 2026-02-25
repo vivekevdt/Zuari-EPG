@@ -11,6 +11,9 @@ const __dirname = path.dirname(__filename);
 // Initialize Gemini
 const genAI = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
 
+// In-Memory Chat History
+const chatMemory = new Map();
+
 // Initialize LanceDB table (New separate connection)
 const dbPath = process.env.LANCEDB_PATH || path.join(__dirname, '..', '..', '..', 'policy_db');
 
@@ -93,7 +96,7 @@ Structure your response as follows:
 </div>
 `;
 
-export const getPlaygroundResponse = async (question, entityName, availablePolicies) => {
+export const getPlaygroundResponse = async (userId, question, entityName, availablePolicies) => {
     try {
         if (!config.GEMINI_API_KEY) {
             throw new Error("GEMINI_API_KEY is not set");
@@ -112,8 +115,8 @@ export const getPlaygroundResponse = async (question, entityName, availablePolic
 
         // Filter by Entity
         if (entityName) {
-            const safeEntity = entityName.replace(/\'/g, "\\\'");
-            conditions.push(`entity = '${safeEntity}'`);
+            const safeEntity = String(entityName).replace(/\'/g, "\\\'");
+            conditions.push(`entity LIKE '%${safeEntity}%'`);
         }
 
         // Filter by Specific Policies
@@ -124,7 +127,6 @@ export const getPlaygroundResponse = async (question, entityName, availablePolic
 
         if (conditions.length > 0) {
             const whereClause = conditions.join(" AND ");
-            console.log("Playground Search Filter:", whereClause);
             searchBuilder = searchBuilder.where(whereClause);
         }
 
@@ -143,18 +145,17 @@ export const getPlaygroundResponse = async (question, entityName, availablePolic
 
         const systemContent = SYSTEM_PROMPT_TEMPLATE.replace("{POLICY_TEXT}", policyText);
 
-        // 6. Generate Response with Gemini
-        // We use single-turn generation here as per request (retains message history only for api call not retain it)
-        // If the user wants history context in the API call, we would need to accept `history` array.
-        // Assuming for now the frontend sends context or just the latest question. 
-        // Based on "retains message history only for api call", I will treat this as stateles.
+        const userKey = userId.toString();
 
+        // Fetch user history or initialize empty array
+        const userHistory = chatMemory.get(userKey) || [];
+
+        // Append new question
+        userHistory.push({ role: 'user', parts: [{ text: question }] });
+        // 6. Generate Response with Gemini
         const response = await genAI.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: [{
-                role: 'user',
-                parts: [{ text: question }]
-            }],
+            contents: userHistory,
             config: {
                 systemInstruction: systemContent,
                 temperature: 0.1,
@@ -171,10 +172,23 @@ export const getPlaygroundResponse = async (question, entityName, availablePolic
             text = response.response.text();
         }
 
+        // Save model's response back to history
+        userHistory.push({ role: 'model', parts: [{ text: text }] });
+        chatMemory.set(userKey, userHistory);
+
         return text;
 
     } catch (error) {
         console.error("Playground Service Error:", error);
         throw error;
+    }
+};
+
+export const clearPlaygroundMemory = (userId) => {
+    if (userId) {
+        const userKey = userId.toString();
+        if (chatMemory.has(userKey)) {
+            chatMemory.delete(userKey);
+        }
     }
 };
