@@ -14,7 +14,8 @@ const Sidebar = ({
     isOpen,
     toggleSidebar,
     onOpenCalendar,
-    toggleDarkMode
+    toggleDarkMode,
+    policies = []
 }) => {
 
 
@@ -77,6 +78,26 @@ const Sidebar = ({
                 <p className="px-4 text-[9px] text-gray-400 mt-6 leading-tight uppercase font-bold tracking-tighter opacity-70">
                     Note: Only the most recent 5 chats will be visible in history.
                 </p>
+
+                {/* Available Policies Section */}
+                <div className="space-y-1 mt-8">
+                    <h4 className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Available Policies</h4>
+                    <div className="space-y-2 px-4">
+                        {policies.length === 0 ? (
+                            <div className="text-[11px] text-gray-400 italic">No assigned policies found</div>
+                        ) : (
+                            policies.map(policy => (
+                                <div
+                                    key={policy._id || policy.id}
+                                    className="flex items-start gap-2 text-[var(--text-muted)] opacity-90 group-hover:opacity-100"
+                                >
+                                    <svg className="w-3.5 h-3.5 shrink-0 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    <span className="text-[12px] font-medium leading-snug break-words line-clamp-2">{policy.title}</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
 
             <div className="p-6 bg-blue-50/50 dark:bg-slate-800/30 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4 mt-auto">

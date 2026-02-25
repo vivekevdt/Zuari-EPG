@@ -160,10 +160,64 @@ const deleteConversation = async (req, res, next) => {
     }
 };
 
+import Policy from '../models/Policy.js';
+
+// @desc    Get all available policies for an employee
+// @route   GET /api/chat/policies
+// @access  Private
+const getAvailablePolicies = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+        const user = req.user;
+
+        // Build a query based on the user's metadata. 
+        // We assume an empty array means "applicable to all"
+        const query = {
+            status: 'live',
+            $and: [
+                {
+                    $or: [
+                        { entity: { $size: 0 } },
+                        { entity: { $exists: false } },
+                        { entity: user.entity }
+                    ]
+                },
+                {
+                    $or: [
+                        { empCategory: { $size: 0 } },
+                        { empCategory: { $exists: false } },
+                        { empCategory: user.empCategory }
+                    ]
+                },
+                {
+                    $or: [
+                        { impactLevel: { $size: 0 } },
+                        { impactLevel: { $exists: false } },
+                        { impactLevel: user.level }
+                    ]
+                }
+            ]
+        };
+
+        const policies = await Policy.find(query)
+            .select('-chunks -versions') // Exclude heavy chunks and versions
+            .sort({ title: 1 });
+
+        res.status(200).json({
+            statusCode: 200,
+            success: true,
+            data: policies
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export {
     createConversation,
     getConversations,
     getMessages,
     sendMessage,
     deleteConversation,
+    getAvailablePolicies
 };

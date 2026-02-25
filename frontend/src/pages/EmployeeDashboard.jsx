@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import ChatArea from '../components/ChatArea';
 import CalendarModal from '../components/CalendarModal';
-import { getConversations, getMessages, createConversation, sendMessage, deleteConversation } from '../api';
+import { getConversations, getMessages, createConversation, sendMessage, deleteConversation, getAvailableEmployeePolicies } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 const EmployeeDashboard = () => {
@@ -23,6 +23,7 @@ const EmployeeDashboard = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [availablePolicies, setAvailablePolicies] = useState([]);
 
     useEffect(() => {
         // Apply dashboard-specific body classes on mount
@@ -42,16 +43,20 @@ const EmployeeDashboard = () => {
     };
 
     useEffect(() => {
-        const fetchSessions = async () => {
+        const fetchInitialData = async () => {
             try {
-                const data = await getConversations();
-                setSessions(data);
+                const [sessionsData, policiesData] = await Promise.all([
+                    getConversations(),
+                    getAvailableEmployeePolicies()
+                ]);
+                setSessions(sessionsData);
+                setAvailablePolicies(policiesData);
                 // We default to NO active session to show Home View
             } catch (error) {
-                console.error("Failed to fetch conversations:", error);
+                console.error("Failed to fetch initial Dashboard data:", error);
             }
         };
-        fetchSessions();
+        fetchInitialData();
     }, []);
 
     useEffect(() => {
@@ -175,6 +180,7 @@ const EmployeeDashboard = () => {
                 toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 onOpenCalendar={() => { setIsCalendarOpen(true); setIsSidebarOpen(false); }}
                 toggleDarkMode={toggleDarkMode}
+                policies={availablePolicies}
             />
 
             <ChatArea

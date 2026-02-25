@@ -138,6 +138,22 @@ export const sendMessage = async (conversationId, content) => {
 };
 
 
+export const getAvailableEmployeePolicies = async () => {
+    try {
+        const response = await fetch(`${API_URL}/api/chat/policies`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch available policies');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const deleteConversation = async (conversationId) => {
     try {
         const response = await fetch(`${API_URL}/api/chat/${conversationId}`, {
