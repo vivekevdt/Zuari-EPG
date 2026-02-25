@@ -49,6 +49,25 @@ const CustomMultiSelect = ({ label, options, selectedValues, onChange, placehold
                 <>
                     <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)}></div>
                     <div className="absolute z-30 w-full mt-2 max-h-60 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none">
+                        {options.length > 0 && (
+                            <div
+                                className="px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer flex items-center gap-3 text-gray-700 dark:text-gray-200 font-medium transition-colors border-b border-gray-50 dark:border-slate-700/50"
+                                onClick={() => {
+                                    if (selectedValues.length === options.length) {
+                                        onChange([]);
+                                    } else {
+                                        onChange(options.map(o => o.value));
+                                    }
+                                }}
+                            >
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${selectedValues.length === options.length && options.length > 0 ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                                    {selectedValues.length === options.length && options.length > 0 && (
+                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                    )}
+                                </div>
+                                <span className="font-bold text-blue-600 dark:text-blue-400">Select All</span>
+                            </div>
+                        )}
                         {options.map(option => (
                             <div
                                 key={option.value}
@@ -349,7 +368,7 @@ const AdminPolicies = () => {
     // Filtering
     const filteredPolicies = policies.filter(policy => {
         const matchesEntity = filterEntity === 'All Entities' ||
-            (Array.isArray(policy.entity) ? policy.entity.includes(filterEntity) : policy.entity === filterEntity);
+            (Array.isArray(policy.entity) ? policy.entity.some(e => e === filterEntity || (e && e._id === filterEntity)) : (policy.entity === filterEntity || (policy.entity && policy.entity._id === filterEntity)));
         const matchesCategory = filterCategory === 'All Categories' || (policy.category || 'General') === filterCategory;
         const matchesSearch = !searchQuery || policy.title.toLowerCase().includes(searchQuery.toLowerCase());
         const isNotArchived = showArchiveModal || policy.status !== 'archived'; // Only show archived in modal/archive view if we implemented that logic.
@@ -421,7 +440,7 @@ const AdminPolicies = () => {
                         >
                             <option>All Entities</option>
                             {entities.map(ent => (
-                                <option key={ent._id} value={ent.name}>{ent.name}</option>
+                                <option key={ent._id} value={ent._id}>{ent.name}</option>
                             ))}
                         </select>
                     </div>
@@ -484,7 +503,7 @@ const AdminPolicies = () => {
                             <div className="relative z-50">
                                 <CustomMultiSelect
                                     label="Target Entities"
-                                    options={entities.map(e => ({ value: e.name, label: e.name }))}
+                                    options={entities.map(e => ({ value: e._id, label: e.name }))}
                                     selectedValues={uploadEntities}
                                     onChange={setUploadEntities}
                                     placeholder="Select one or more entities..."
@@ -494,10 +513,10 @@ const AdminPolicies = () => {
                             <div className="relative z-40">
                                 <CustomMultiSelect
                                     label="Impact Levels"
-                                    options={impactLevels.map(i => ({ value: i._id, label: `${i.name} (${i.entity?.name})` }))}
+                                    options={uploadEntities.length > 0 ? impactLevels.filter(i => uploadEntities.includes(i.entity?._id || i.entity)).map(i => ({ value: i._id, label: `${i.name} (${i.entity?.name})` })) : []}
                                     selectedValues={uploadImpactLevels}
                                     onChange={setUploadImpactLevels}
-                                    placeholder="Select impact levels..."
+                                    placeholder={uploadEntities.length === 0 ? "Please select a Target Entity first..." : "Select impact levels..."}
                                 />
                             </div>
 
@@ -634,7 +653,9 @@ const AdminPolicies = () => {
                                 <tr className="border-b border-gray-100 dark:border-slate-700">
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider w-16">Index</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Policy Document</th>
-                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Entity</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Target Entities</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Impact Levels</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Emp. Categories</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Version</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Category</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</th>
@@ -658,10 +679,64 @@ const AdminPolicies = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-4">
-                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                                {Array.isArray(policy.entity) ? policy.entity.join(', ') : policy.entity}
-                                            </span>
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="flex flex-col gap-1 items-start">
+                                                {(() => {
+                                                    const ents = Array.isArray(policy.entity) ? policy.entity : (policy.entity ? [policy.entity] : []);
+                                                    const visible = ents.slice(0, 3);
+                                                    const remaining = ents.length - 3;
+                                                    return (
+                                                        <>
+                                                            {visible.map((ent, i) => {
+                                                                const entityObj = entities.find(e => e._id === ent);
+                                                                return (
+                                                                    <span key={i} className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-[10px] font-bold truncate max-w-[120px]" title={entityObj ? entityObj.name : ent}>
+                                                                        {entityObj ? entityObj.name : ent}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                            {remaining > 0 && (
+                                                                <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold">
+                                                                    +{remaining} more
+                                                                </span>
+                                                            )}
+                                                            {ents.length === 0 && <span className="text-gray-400 text-xs">-</span>}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="grid grid-cols-3 gap-1 items-start min-w-[150px]">
+                                                {(() => {
+                                                    if (!policy.impactLevel || policy.impactLevel.length === 0) return <span className="text-gray-400 text-xs col-span-3">-</span>;
+                                                    return policy.impactLevel.map((impactId, i) => {
+                                                        const impact = impactLevels.find(il => il._id === impactId);
+                                                        if (!impact) return null;
+                                                        return (
+                                                            <span key={i} className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-[10px] font-bold truncate text-center" title={impact.name}>
+                                                                {impact.name}
+                                                            </span>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="grid grid-cols-3 gap-1 items-start min-w-[150px]">
+                                                {(() => {
+                                                    if (!policy.empCategory || policy.empCategory.length === 0) return <span className="text-gray-400 text-xs col-span-3">-</span>;
+                                                    return policy.empCategory.map((catId, i) => {
+                                                        const cat = empCategories.find(c => c._id === catId);
+                                                        if (!cat) return null;
+                                                        return (
+                                                            <span key={i} className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold truncate text-center" title={cat.name}>
+                                                                {cat.code || cat.name}
+                                                            </span>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
                                         </td>
                                         <td className="py-4 px-4">
                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 uppercase tracking-wide">

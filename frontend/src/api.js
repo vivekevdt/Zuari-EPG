@@ -328,9 +328,8 @@ export const uploadPolicy = async (formData) => {
 
         const response = await fetch(`${API_URL}/api/admin/upload-policy`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
+            headers: getAuthHeaders(),
+
             body: formData,
         });
         const data = await response.json();

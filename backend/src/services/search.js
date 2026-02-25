@@ -4,6 +4,7 @@ import embed from "../utils/embeddings.js";
 
 export async function searchPolicy(question, user, topK = 4) {
 
+
     const [queryVector] = await embed([question]);
 
     let searchBuilder = table.search(queryVector);
@@ -13,19 +14,22 @@ export async function searchPolicy(question, user, topK = 4) {
 
         // 1. Entity Filter
         if (user.entity) {
-            const safeEntity = String(user.entity).replace(/'/g, "\\'");
+            const entityId = user.entity._id ? String(user.entity._id) : String(user.entity);
+            const safeEntity = entityId.replace(/'/g, "\\'");
             conditions.push(`entity LIKE '%${safeEntity}%'`);
         }
 
         // 2. Impact Level Filter
         if (user.level) {
-            const safeLevel = String(user.level).replace(/'/g, "\\'");
+            const levelId = user.level._id ? String(user.level._id) : String(user.level);
+            const safeLevel = levelId.replace(/'/g, "\\'");
             conditions.push(`impactLevel LIKE '%${safeLevel}%'`);
         }
 
         // 3. Employee Category Filter
         if (user.empCategory) {
-            const safeCategory = String(user.empCategory).replace(/'/g, "\\'");
+            const empCatId = user.empCategory._id ? String(user.empCategory._id) : String(user.empCategory);
+            const safeCategory = empCatId.replace(/'/g, "\\'");
             conditions.push(`empCategory LIKE '%${safeCategory}%'`);
         }
 

@@ -16,7 +16,8 @@ const policySchema = new mongoose.Schema(
             default: Date.now
         },
         entity: [{
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Entity',
             required: true
         }],
         impactLevel: [{

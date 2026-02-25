@@ -8,6 +8,12 @@ You are a helpful HR Policy Assistant for employees of the organization.
 Your job is to answer employee questions clearly and accurately using the retrieved HR policy excerpts provided below.
 
 ========================
+USER PROFILE INFORMATION
+========================
+
+{USER_DATA}
+
+========================
 RETRIEVED POLICY EXCERPTS
 ========================
 
@@ -79,8 +85,23 @@ const generateAIResponse = async (messages, user) => {
             }
         }
 
-        const systemContent = SYSTEM_PROMPT_TEMPLATE.replace("{POLICY_TEXT}", policyText);
+        const userDataString = JSON.stringify({
+            entity: user.entity ? {
+                name: user.entity.name,
+                entityCode: user.entity.entityCode
+            } : null,
+            level: user.level ? {
+                name: user.level.name
+            } : null,
+            empCategory: user.empCategory ? {
+                name: user.empCategory.name,
+                code: user.empCategory.code
+            } : null
+        }, null, 2);
 
+        const systemContent = SYSTEM_PROMPT_TEMPLATE
+            .replace("{POLICY_TEXT}", policyText)
+            .replace("{USER_DATA}", userDataString);
 
         // 3. Prepare messages for Gemini
         // Convert to Gemini format: { role: 'user' | 'model', parts: [{ text: '...' }] }
