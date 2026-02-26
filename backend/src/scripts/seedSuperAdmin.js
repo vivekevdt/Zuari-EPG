@@ -20,7 +20,7 @@ const createTestUser = async () => {
             name: 'Super Admin',
             email: 'superadmin@adventz.com',
             password: 'superadmin@1234',
-            roles: ["superadmin"],
+            roles: ["superAdmin"],
             entity: null
         };
 
