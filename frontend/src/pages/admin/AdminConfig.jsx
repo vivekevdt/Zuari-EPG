@@ -161,7 +161,7 @@ const ConfigTable = ({ title, icon, accentColor, columns, rows, onAdd, onEdit, o
             {addForm}
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto custom-scrollbar max-h-[285px]">
                 {loading ? (
                     <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
                 ) : rows.length === 0 ? (
@@ -171,8 +171,8 @@ const ConfigTable = ({ title, icon, accentColor, columns, rows, onAdd, onEdit, o
                     </div>
                 ) : (
                     <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-gray-100 dark:border-slate-700">
+                        <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800 shadow-[0_1px_0_0_rgba(243,244,246,1)] dark:shadow-[0_1px_0_0_rgba(51,65,85,1)]">
+                            <tr>
                                 {columns.map(col => (
                                     <th key={col.key} className="py-3 px-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">{col.label}</th>
                                 ))}
@@ -537,7 +537,7 @@ const AdminConfig = () => {
                         onCancel={() => setShowAdd(p => ({ ...p, impact: false }))}
                     />
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto custom-scrollbar max-h-[285px]">
                         {loading.impact ? (
                             <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
                         ) : filteredImpact.length === 0 ? (
@@ -547,8 +547,8 @@ const AdminConfig = () => {
                             </div>
                         ) : (
                             <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-gray-100 dark:border-slate-700">
+                                <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800 shadow-[0_1px_0_0_rgba(243,244,246,1)] dark:shadow-[0_1px_0_0_rgba(51,65,85,1)]">
+                                    <tr>
                                         {impactCols.map(col => (
                                             <th key={col.key} className="py-3 px-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">{col.label}</th>
                                         ))}

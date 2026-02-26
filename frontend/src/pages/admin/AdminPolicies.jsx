@@ -697,9 +697,19 @@ const AdminPolicies = () => {
                                                                 );
                                                             })}
                                                             {remaining > 0 && (
-                                                                <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold">
-                                                                    +{remaining} more
-                                                                </span>
+                                                                <div className="relative group inline-block mt-1">
+                                                                    <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold cursor-help">
+                                                                        +{remaining} more
+                                                                    </span>
+                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                                                        <div className="flex flex-col gap-1.5">
+                                                                            {ents.map((ent, i) => {
+                                                                                const entityObj = entities.find(e => e._id === ent);
+                                                                                return <div key={i} className="truncate">• {entityObj ? entityObj.name : ent}</div>;
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             )}
                                                             {ents.length === 0 && <span className="text-gray-400 text-xs">-</span>}
                                                         </>
@@ -708,34 +718,82 @@ const AdminPolicies = () => {
                                             </div>
                                         </td>
                                         <td className="py-4 px-4 align-top">
-                                            <div className="grid grid-cols-3 gap-1 items-start min-w-[150px]">
+                                            <div className="flex flex-col gap-1 items-start min-w-[120px]">
                                                 {(() => {
-                                                    if (!policy.impactLevel || policy.impactLevel.length === 0) return <span className="text-gray-400 text-xs col-span-3">-</span>;
-                                                    return policy.impactLevel.map((impactId, i) => {
-                                                        const impact = impactLevels.find(il => il._id === impactId);
-                                                        if (!impact) return null;
-                                                        return (
-                                                            <span key={i} className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-[10px] font-bold truncate text-center" title={impact.name}>
-                                                                {impact.name}
-                                                            </span>
-                                                        );
-                                                    });
+                                                    if (!policy.impactLevel || policy.impactLevel.length === 0) return <span className="text-gray-400 text-xs">-</span>;
+                                                    const visible = policy.impactLevel.slice(0, 3);
+                                                    const remaining = policy.impactLevel.length - 3;
+
+                                                    return (
+                                                        <>
+                                                            <div className="grid grid-cols-3 gap-1">
+                                                                {visible.map((impactId, i) => {
+                                                                    const impact = impactLevels.find(il => il._id === impactId);
+                                                                    if (!impact) return null;
+                                                                    return (
+                                                                        <span key={i} className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-[10px] font-bold truncate text-center" title={impact.name}>
+                                                                            {impact.name}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            {remaining > 0 && (
+                                                                <div className="relative group inline-block mt-1">
+                                                                    <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold cursor-help">
+                                                                        +{remaining} more
+                                                                    </span>
+                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                                                        <div className="grid grid-cols-4 gap-1.5">
+                                                                            {policy.impactLevel.map((impactId, i) => {
+                                                                                const impact = impactLevels.find(il => il._id === impactId);
+                                                                                return impact ? <span key={i} className="px-2 py-1 bg-gray-800 rounded text-center">{impact.name}</span> : null;
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
                                                 })()}
                                             </div>
                                         </td>
                                         <td className="py-4 px-4 align-top">
-                                            <div className="grid grid-cols-3 gap-1 items-start min-w-[150px]">
+                                            <div className="flex flex-col gap-1 items-start min-w-[120px]">
                                                 {(() => {
-                                                    if (!policy.empCategory || policy.empCategory.length === 0) return <span className="text-gray-400 text-xs col-span-3">-</span>;
-                                                    return policy.empCategory.map((catId, i) => {
-                                                        const cat = empCategories.find(c => c._id === catId);
-                                                        if (!cat) return null;
-                                                        return (
-                                                            <span key={i} className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold truncate text-center" title={cat.name}>
-                                                                {cat.code || cat.name}
-                                                            </span>
-                                                        );
-                                                    });
+                                                    if (!policy.empCategory || policy.empCategory.length === 0) return <span className="text-gray-400 text-xs">-</span>;
+                                                    const visible = policy.empCategory.slice(0, 3);
+                                                    const remaining = policy.empCategory.length - 3;
+
+                                                    return (
+                                                        <>
+                                                            <div className="grid grid-cols-3 gap-1">
+                                                                {visible.map((catId, i) => {
+                                                                    const cat = empCategories.find(c => c._id === catId);
+                                                                    if (!cat) return null;
+                                                                    return (
+                                                                        <span key={i} className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold truncate text-center" title={cat.name}>
+                                                                            {cat.code || cat.name}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            {remaining > 0 && (
+                                                                <div className="relative group inline-block mt-1">
+                                                                    <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold cursor-help">
+                                                                        +{remaining} more
+                                                                    </span>
+                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                                                        <div className="grid grid-cols-4 gap-1.5">
+                                                                            {policy.empCategory.map((catId, i) => {
+                                                                                const cat = empCategories.find(c => c._id === catId);
+                                                                                return cat ? <span key={i} className="px-2 py-1 bg-gray-800 rounded text-center">{cat.code || cat.name}</span> : null;
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
                                                 })()}
                                             </div>
                                         </td>
