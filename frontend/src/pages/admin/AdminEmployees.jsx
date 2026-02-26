@@ -75,7 +75,7 @@ const AdminEmployees = () => {
         : allImpactLevels;
 
     const selectedCategory = empCategories.find(cat => cat._id === formData.empCategory);
-    const isTrainee = selectedCategory && selectedCategory.name.toLowerCase().includes('trainee');
+    const requiresImpactLevel = selectedCategory && (selectedCategory.code === 'PE' || selectedCategory.name.toLowerCase().includes('permanent'));
 
     // ── Fetch on mount ─────────────────────────────────────────────────────
     useEffect(() => {
@@ -115,7 +115,8 @@ const AdminEmployees = () => {
 
             if (name === 'empCategory') {
                 const selectedCat = empCategories.find(cat => cat._id === value);
-                if (selectedCat && selectedCat.name.toLowerCase().includes('trainee')) {
+                const isCatPermanent = selectedCat && (selectedCat.code === 'PE' || selectedCat.name.toLowerCase().includes('permanent'));
+                if (!isCatPermanent) {
                     updates.impactLevel = '';
                 }
             }
@@ -369,10 +370,10 @@ const AdminEmployees = () => {
                                             name="impactLevel"
                                             value={formData.impactLevel}
                                             onChange={handleChange}
-                                            disabled={!formData.entity || isTrainee}
+                                            disabled={!formData.entity || !requiresImpactLevel}
                                         >
                                             <option value="">
-                                                {isTrainee ? 'Not Applicable' : (formData.entity ? 'Select Impact Level' : 'Select an entity first')}
+                                                {!requiresImpactLevel ? 'Not Applicable' : (formData.entity ? 'Select Impact Level' : 'Select an entity first')}
                                             </option>
                                             {filteredImpactLevels.map(il => (
                                                 <option key={il._id} value={il._id}>{il.name}</option>
