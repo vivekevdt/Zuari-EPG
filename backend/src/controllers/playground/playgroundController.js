@@ -1,5 +1,4 @@
-
-import { getPlaygroundResponse } from '../../services/playground/playgroundService.js';
+import { getPlaygroundResponse, clearPlaygroundMemory } from '../../services/playground/playgroundService.js';
 
 // Playground Chat Controller
 // Does NOT use shared search or AI services.
@@ -7,6 +6,7 @@ import { getPlaygroundResponse } from '../../services/playground/playgroundServi
 const handlePlaygroundChat = async (req, res, next) => {
     try {
         const { message, entity, policies } = req.body;
+        const userId = req.user._id;
 
         if (!message) {
             res.status(400);
@@ -19,11 +19,10 @@ const handlePlaygroundChat = async (req, res, next) => {
             throw new Error('Please select both an Entity and at least one Policy to start the chat.');
         }
 
-        console.log("Playground Chat Request:", { message, entity, policies });
 
         // 1. Generate Response
         // We pass the parameters directly to the standalone service
-        const aiResponse = await getPlaygroundResponse(message, entity, policies);
+        const aiResponse = await getPlaygroundResponse(userId, message, entity, policies);
 
         // 2. Respond
         res.status(200).json({
@@ -43,6 +42,21 @@ const handlePlaygroundChat = async (req, res, next) => {
     }
 };
 
+const handlePlaygroundReset = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+        clearPlaygroundMemory(userId);
+        res.status(200).json({
+            success: true,
+            message: 'Playground AI session memory reset successfully'
+        });
+    } catch (error) {
+        console.error("Playground Memory Reset Error:", error);
+        next(error);
+    }
+}
+
 export {
-    handlePlaygroundChat
+    handlePlaygroundChat,
+    handlePlaygroundReset
 };

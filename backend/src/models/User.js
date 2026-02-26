@@ -18,9 +18,30 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+
+    // ── Linked to config collections via ObjectId ─────────────────────────
     entity: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Entity',
+      default: null
+    },
+
+    level: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ImpactLevel',
+      default: null
+    },
+
+    empCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EmployeeCategory',
+      default: null
+    },
+
+    // ── Kept as plain string for quick access without join ────────────────
+    entity_code: {
       type: String,
-      required: true
+      default: ''
     },
 
     is_account_active: {
@@ -32,23 +53,17 @@ const userSchema = new mongoose.Schema(
       default: false
     },
 
-    role: {
-      type: String,
-      default: "user"
+    roles: {
+      type: [String],
+      enum: ["employee", "admin", "superAdmin"],
+      default: ["employee"]
     },
-    level: {
-      type: String,
-      default: ""
-    },
+
     status: {
       type: String,
       enum: ["active", "inactive"],
       default: "active"
     },
-    entity_code: {
-      type: String,
-      default: ""
-    }
   },
   { timestamps: true }
 );

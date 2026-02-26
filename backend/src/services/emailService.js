@@ -1,27 +1,52 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import config from "../config/env.js"
+import config from "../config/env.js";
+import Entity from '../models/Entity.js';
 dotenv.config();
 const APP_URL = config.API_URL;
 
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.office365.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-    auth: {
-        user: "vivek.kumar@adventz.com",
-        pass: "Welcome@1234",
-    },
-    tls: {
-        ciphers: 'SSLv3',
-        rejectUnauthorized: false
-    }
-});
+
+
+const getTransporter = () => {
+    return nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.office365.com',
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+        auth: {
+            user: config.SMTP_FROM,
+            pass: config.SMTP_PASSWORD
+        },
+        tls: {
+            ciphers: 'SSLv3',
+            rejectUnauthorized: false
+        }
+    });
+};
 
 const sendWelcomeEmail = async (user, plainPassword) => {
     try {
+        // Resolve entity name — user.entity is an ObjectId after creation
+        let entityDisplay = 'N/A';
+        if (user.entity) {
+            if (user.entity.name) {
+                // Already populated object
+                entityDisplay = `${user.entity.name} (${user.entity.entityCode})`;
+            } else {
+                // Raw ObjectId — look it up
+                try {
+                    const entityDoc = await Entity.findById(user.entity).select('name entityCode');
+                    if (entityDoc) entityDisplay = `${entityDoc.name} (${entityDoc.entityCode})`;
+                } catch (_) { entityDisplay = user.entity.toString(); }
+            }
+        }
+
+        // Roles: use the array, formatted nicely
+        const rolesDisplay = (user.roles && user.roles.length > 0)
+            ? user.roles.join(', ')
+            : 'Employee';
+
         const mailOptions = {
-            from: "vivek.kumar@adventz.com",
+            from: config.SMTP_FROM,
             to: user.email,
             subject: 'Welcome to AskHR - Account Credentials',
             html: `
@@ -34,8 +59,8 @@ const sendWelcomeEmail = async (user, plainPassword) => {
                         <h3 style="margin-top: 0; color: #495057;">Your Login Credentials</h3>
                         <p style="margin: 5px 0;"><strong>Email:</strong> ${user.email}</p>
                         <p style="margin: 5px 0;"><strong>Password:</strong> ${plainPassword}</p>
-                        <p style="margin: 5px 0;"><strong>Entity:</strong> ${user.entity}</p>
-                        <p style="margin: 5px 0;"><strong>Role:</strong> ${user.role}</p>
+                        <p style="margin: 5px 0;"><strong>Entity:</strong> ${entityDisplay}</p>
+                        <p style="margin: 5px 0;"><strong>Role:</strong> ${rolesDisplay}</p>
                     </div>
 
                     <p>Please login and change your password immediately for security purposes.</p>
@@ -53,6 +78,7 @@ const sendWelcomeEmail = async (user, plainPassword) => {
             `
         };
 
+        const transporter = getTransporter();
         const info = await transporter.sendMail(mailOptions);
         console.log('Welcome email sent: ' + info.response);
         return info;
@@ -96,6 +122,7 @@ const sendPasswordResetEmail = async (user, tempPassword) => {
             `
         };
 
+        const transporter = getTransporter();
         const info = await transporter.sendMail(mailOptions);
         console.log('Password reset email sent: ' + info.response);
         return info;

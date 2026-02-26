@@ -9,6 +9,7 @@ import AdminEntities from './pages/admin/AdminEntities';
 import AdminPolicies from './pages/admin/AdminPolicies';
 import AdminInteractions from './pages/admin/AdminInteractions';
 import AdminEmployees from './pages/admin/AdminEmployees';
+import AdminConfig from './pages/admin/AdminConfig';
 import SuperAdminLayout from './pages/superadmin/SuperAdminLayout';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminVectorDb from './pages/superadmin/SuperAdminVectorDb';
@@ -19,7 +20,7 @@ const SuperAdminRoute = ({ children }) => {
   if (loading) return null;
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'superAdmin') return <Navigate to="/" replace />;
+  if (!user.roles?.includes('superAdmin')) return <Navigate to="/" replace />;
 
   return children;
 };
@@ -29,7 +30,7 @@ const AdminRoute = ({ children }) => {
   if (loading) return null;
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/" replace />; // Strict check, or allow superAdmin? User specified separate role.
+  if (!user.roles?.includes('admin') && !user.roles?.includes('superAdmin')) return <Navigate to="/" replace />;
 
   return children;
 };
@@ -39,8 +40,15 @@ const EmployeeRoute = ({ children }) => {
   if (loading) return null;
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-  if (user.role === 'superAdmin') return <Navigate to="/super-admin/dashboard" replace />;
+  // Allow if user has employee role OR both roles (dual-role users can access employee view)
+  if (!user.roles?.includes('employee') && !user.roles?.includes('admin') && !user.roles?.includes('superAdmin')) {
+    return <Navigate to="/login" replace />;
+  }
+  // Pure admin (no employee role) → redirect to admin dashboard
+  if (!user.roles?.includes('employee')) {
+    if (user.roles?.includes('superAdmin')) return <Navigate to="/super-admin/dashboard" replace />;
+    if (user.roles?.includes('admin')) return <Navigate to="/admin/dashboard" replace />;
+  }
 
   return children;
 };
@@ -50,8 +58,10 @@ const PublicRoute = ({ children }) => {
   if (loading) return null;
 
   if (user) {
-    if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-    if (user.role === 'superAdmin') return <Navigate to="/super-admin/dashboard" replace />;
+    if (user.roles?.includes('superAdmin')) return <Navigate to="/super-admin/dashboard" replace />;
+    // Dual-role users (employee+admin) default to employee dashboard; they can switch from there
+    if (user.roles?.includes('employee')) return <Navigate to="/" replace />;
+    if (user.roles?.includes('admin')) return <Navigate to="/admin/dashboard" replace />;
     return <Navigate to="/" replace />;
   }
 
@@ -89,7 +99,8 @@ function App() {
           <Route path="policies" element={<AdminPolicies />} />
 
           <Route path="interactions" element={<AdminInteractions />} />
-          <Route path="employees" element={<AdminEmployees />} />
+          <Route path="user-management" element={<AdminEmployees />} />
+          <Route path="config" element={<AdminConfig />} />
           <Route path="playground" element={<Playground />} />
         </Route>
 

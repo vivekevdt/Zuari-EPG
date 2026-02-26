@@ -14,31 +14,32 @@ const Sidebar = ({
     isOpen,
     toggleSidebar,
     onOpenCalendar,
-    toggleDarkMode
+    toggleDarkMode,
+    policies = []
 }) => {
 
 
     return (
         <aside
             id="mainSidebar"
-            className={`w-72 bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl border-r border-gray-100 dark:border-slate-800 flex flex-col fixed inset-y-0 left-0 z-70 transition-transform duration-300 md:relative ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+            className={`w-64 bg-white/70 dark:bg-slate-950 backdrop-blur-2xl border-r border-gray-100 dark:border-slate-800 flex flex-col fixed inset-y-0 left-0 z-70 transition-transform duration-300 md:relative ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
-            <div className="p-6">
-                <div className="flex items-center gap-3 mb-8 px-2">
+            <div className="p-5">
+                <div className="flex items-center gap-3 mb-6 px-1">
                     <div className="flex items-center gap-3 px-2 py-1">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zuari-navy to-blue-600 shadow-lg shadow-blue-900/20 flex items-center justify-center shrink-0">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-zuari-navy to-blue-600 shadow-md shadow-blue-900/20 flex items-center justify-center shrink-0">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                         </div>
                         <div className="flex flex-col">
-                            <h1 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-none">AskHR</h1>
-                            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">AI Policy Assistant</span>
+                            <h1 className="text-lg font-extrabold tracking-tight text-gray-900 dark:text-white leading-none">AskHR</h1>
+                            <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest">AI Policy Assistant</span>
                         </div>
                     </div>
                 </div>
 
                 <button
                     onClick={onNewChat}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-zuari-navy rounded-2xl text-[14px] font-bold text-white shadow-lg shadow-blue-900/10 hover:bg-[#122856] transition-all group active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-zuari-navy rounded-xl text-sm font-bold text-white shadow shadow-blue-900/10 hover:bg-[#122856] transition-all group active:scale-[0.98]"
                 >
                     <svg className="w-4 h-4 text-white/80 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"></path></svg>
                     New Discussion
@@ -47,20 +48,20 @@ const Sidebar = ({
 
             <div className="flex-1 overflow-y-auto px-4 space-y-6 custom-scrollbar">
                 <div className="space-y-1">
-                    <h4 className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Recent Queries</h4>
+                    <h4 className="px-3 text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-[0.2em] mb-3">Recent Queries</h4>
                     <div className="space-y-1">
                         {sessions.length === 0 ? (
-                            <div className="px-4 text-[11px] text-gray-400 italic">No recent history</div>
+                            <div className="px-3 text-[11px] text-gray-500 dark:text-gray-400 italic">No recent history</div>
                         ) : (
                             sessions.slice(0, 5).map(session => (
                                 <div
                                     key={session._id || session.id}
                                     onClick={() => onSelectSession(session._id || session.id)}
-                                    className={`sidebar-item p-4 rounded-2xl cursor-pointer flex items-center justify-between gap-3 group/item ${activeSessionId === (session._id || session.id) ? 'sidebar-active text-[var(--text-main)] bg-blue-50/50 dark:bg-slate-800/50' : 'opacity-80 hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-white/50 dark:hover:bg-slate-800/30'}`}
+                                    className={`sidebar-item p-3 px-3 rounded-xl cursor-pointer flex items-center justify-between gap-2 group/item ${activeSessionId === (session._id || session.id) ? 'sidebar-active text-blue-700 dark:text-white bg-blue-50/80 dark:bg-slate-800' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'}`}
                                 >
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <svg className={`w-3.5 h-3.5 shrink-0 ${activeSessionId === (session._id || session.id) ? 'text-blue-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                                        <span className="text-[14px] font-semibold truncate">{session.title || 'New Conversation'}</span>
+                                        <svg className={`w-3.5 h-3.5 shrink-0 ${activeSessionId === (session._id || session.id) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                                        <span className="text-[13px] font-semibold truncate">{session.title || 'New Conversation'}</span>
                                     </div>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onDeleteSession(session._id || session.id); }}
@@ -74,17 +75,44 @@ const Sidebar = ({
                     </div>
                 </div>
 
-                <p className="px-4 text-[9px] text-gray-400 mt-6 leading-tight uppercase font-bold tracking-tighter opacity-70">
+                <p className="px-3 text-[9px] text-gray-500 dark:text-gray-400 mt-4 leading-tight uppercase font-bold tracking-tighter opacity-70">
                     Note: Only the most recent 5 chats will be visible in history.
                 </p>
+
+                {/* Available Policies Section */}
+                <div className="space-y-1 mt-6">
+                    <h4 className="px-3 text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-[0.2em] mb-3">Available Policies</h4>
+                    <div className="space-y-1.5 px-2 pb-6">
+                        {policies.length === 0 ? (
+                            <div className="text-[11px] text-gray-500 dark:text-gray-400 italic px-1">No assigned policies found</div>
+                        ) : (
+                            policies.map(policy => (
+                                <div
+                                    key={policy._id || policy.id}
+                                    className="flex flex-col p-2 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 dark:hover:bg-slate-800 dark:hover:shadow-black/20 transition-all duration-300 group cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                                >
+                                    <div className="flex items-start gap-2.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                        <svg className="w-4 h-4 shrink-0 text-blue-500 mt-[1px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                        <span className="text-[13px] font-semibold leading-snug break-words line-clamp-2 group-hover:line-clamp-none">{policy.title}</span>
+                                    </div>
+                                    <div className="overflow-hidden max-h-0 group-hover:max-h-40 transition-all duration-300 pl-[26px]">
+                                        <div className="mt-2 p-2.5 bg-blue-50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded-lg text-[11px] text-gray-600 dark:text-gray-400 italic shadow-inner">
+                                            {policy.description || 'No additional details available.'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
 
-            <div className="p-6 bg-blue-50/50 dark:bg-slate-800/30 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4 mt-auto">
-                <div className="w-10 h-10 rounded-xl bg-zuari-navy flex items-center justify-center text-white text-xs font-bold">
+            <div className="p-4 bg-blue-50/50 dark:bg-slate-800/30 border-t border-gray-100 dark:border-slate-800 flex items-center gap-3 mt-auto">
+                <div className="w-8 h-8 rounded-[10px] bg-zuari-navy flex items-center justify-center text-white text-[10px] font-bold">
                     {user?.name ? user.name.substring(0, 2).toUpperCase() : 'EU'}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                    <div className="text-[12px] font-black truncate leading-tight text-gray-900 dark:text-white">{user?.name || 'Employee User'}</div>
+                    <div className="text-[11px] font-black truncate leading-tight text-gray-900 dark:text-white">{user?.name || 'Employee User'}</div>
                     <button onClick={onLogout} className="text-[10px] text-red-500 font-bold uppercase tracking-tighter hover:text-red-700">Log Out</button>
                 </div>
                 {/* Dark Mode Toggle */}

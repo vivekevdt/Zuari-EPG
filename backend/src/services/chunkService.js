@@ -11,6 +11,11 @@ import { loadPDF, loadDOCX } from '../utils/textLoaders.js';
 import { table } from '../db/lancedb.js';
 import embed from '../utils/embeddings.js';
 
+
+
+
+
+
 // Read content from PDF or DOCX files
 const readFileContent = async (filePath) => {
     const ext = path.extname(filePath).toLowerCase();
@@ -29,6 +34,7 @@ const readFileContent = async (filePath) => {
         throw new Error(`Failed to extract text from file: ${error.message}`);
     }
 };
+
 
 export const processPolicyFile = async (policy) => {
     try {
@@ -55,6 +61,7 @@ export const processPolicyFile = async (policy) => {
         throw error;
     }
 };
+
 
 // Function to store chunks for a policy
 // We will assume that 'chunks' is an array of strings (the text content of each chunk)
@@ -86,6 +93,7 @@ export const storeChunks = async (policyId, chunks) => {
     }
 };
 
+
 // Function to get chunks for a policy (used when publishing)
 export const getChunksByPolicyId = async (policyId) => {
     try {
@@ -101,6 +109,7 @@ export const getChunksByPolicyId = async (policyId) => {
         throw error;
     }
 };
+
 
 export const publishPolicy = async (policyId) => {
     try {
@@ -120,8 +129,15 @@ export const publishPolicy = async (policyId) => {
             content: chunk.content,
             heading: chunk.header,
             policy: policy.title,
-            entity: policy.entity;
+            entity: Array.isArray(policy.entity) ? policy.entity.join(',') : String(policy.entity || ''),
+            impactLevel: Array.isArray(policy.impactLevel) ? policy.impactLevel.join(',') : String(policy.impactLevel || ''),
+            empCategory: Array.isArray(policy.empCategory) ? policy.empCategory.join(',') : String(policy.empCategory || '')
         }));
+
+
+
+
+
 
 
 
@@ -150,9 +166,11 @@ export const deleteChunks = async (policyTitle, entity) => {
             return;
         }
 
-        // storage of strings in lancedb might need escaping if they contain single quotes
+        // stringify entity if array to match lancedb storage format
+        const entityStr = Array.isArray(entity) ? entity.join(',') : String(entity || '');
+
         const safeTitle = policyTitle.replace(/'/g, "\\'");
-        const safeEntity = entity.replace(/'/g, "\\'");
+        const safeEntity = entityStr.replace(/'/g, "\\'");
 
         // Delete where policy AND entity match
         await table.delete(`policy = '${safeTitle}' AND entity = '${safeEntity}'`);

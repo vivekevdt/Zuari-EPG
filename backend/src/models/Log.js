@@ -19,8 +19,8 @@ const logSchema = mongoose.Schema({
         required: true
     },
     entity: {
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Entity'
     },
     createdAt: {
         type: Date,

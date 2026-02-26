@@ -17,12 +17,12 @@ const AdminLayout = () => {
         },
 
         {
-            path: '/admin/employees', label: 'Employees', icon: (
+            path: '/admin/user-management', label: 'User Management', icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             )
         },
         {
-            path: '/admin/interactions', label: 'Interactions', icon: (
+            path: '/admin/interactions', label: 'User Monitoring', icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
             )
         },
@@ -30,6 +30,11 @@ const AdminLayout = () => {
         {
             path: '/admin/policies', label: 'Policy Hub', icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            )
+        },
+        {
+            path: '/admin/config', label: 'Config', icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
             )
         },
         {
@@ -97,6 +102,20 @@ const AdminLayout = () => {
                     </button>
 
                     <div className="flex items-center gap-4">
+                        {/* Switch view — only for dual-role users */}
+                        {user?.roles?.includes('employee') && (
+                            <button
+                                onClick={() => navigate('/')}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-sm font-bold transition-all border border-blue-100 dark:border-blue-800"
+                                title="Switch to Employee Dashboard"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                </svg>
+                                Employee View
+                            </button>
+                        )}
+
                         <div className="text-right hidden sm:block">
                             <div className="text-sm font-bold text-gray-800 dark:text-white">{user?.name}</div>
                             <div className="text-xs text-blue-500 font-bold tracking-wider uppercase">Administrator</div>
@@ -107,7 +126,7 @@ const AdminLayout = () => {
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-8">
+                <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-5">
                     <Outlet />
                 </div>
             </main>

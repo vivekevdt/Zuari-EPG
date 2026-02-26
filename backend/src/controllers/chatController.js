@@ -11,7 +11,7 @@ const createConversation = async (req, res, next) => {
 
         const conversation = await chatService.createNewConversation(req.user._id, title);
 
-        await createLog(req.user._id, req.user.name, req.user.role, req.user.entity, `Created conversation: ${title}`);
+        await createLog(req.user._id, req.user.name, req.user.roles?.join(', ') || 'employee', req.user.entity, `Created conversation: ${title}`);
 
         res.status(201).json({
             statusCode: 201,
@@ -102,13 +102,14 @@ const sendMessage = async (req, res, next) => {
         // 1. Save User Message
         const userMessage = await chatService.saveMessage(conversation._id, req.user._id, 'user', content);
 
-        await createLog(req.user._id, req.user.name, req.user.role, req.user.entity, `Prompted AI: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
+        await createLog(req.user._id, req.user.name, req.user.roles?.join(', ') || 'employee', req.user.entity, `Prompted AI: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
 
         // 2. Fetch recent context
         const recentMessages = await chatService.getRecentMessages(conversation._id);
 
         // 3. Generate Bot Response
-        const botContent = await aiService.generateAIResponse(recentMessages, req.user.entity);
+        const populatedUser = await req.user.populate(['entity', 'level', 'empCategory']);
+        const botContent = await aiService.generateAIResponse(recentMessages, populatedUser);
 
         // 4. Save Bot Message
         const botMessage = await chatService.saveMessage(conversation._id, req.user._id, 'ai', botContent);
@@ -159,10 +160,90 @@ const deleteConversation = async (req, res, next) => {
     }
 };
 
+import Policy from '../models/Policy.js';
+
+// @desc    Get all available policies for an employee
+// @route   GET /api/chat/policies
+// @access  Private
+const getAvailablePolicies = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+        const user = req.user;
+
+        // Build a query based on the user's metadata. 
+        // We assume an empty array means "applicable to all"
+        const query = {
+            status: 'live',
+            $and: [
+                {
+                    $or: [
+                        { entity: { $size: 0 } },
+                        { entity: { $exists: false } },
+                        { entity: user.entity }
+                    ]
+                },
+                {
+                    $or: [
+                        { empCategory: { $size: 0 } },
+                        { empCategory: { $exists: false } },
+                        { empCategory: user.empCategory }
+                    ]
+                }
+            ]
+        };
+
+        if (user.level) {
+            query.$and.push({
+                $or: [
+                    { impactLevel: { $size: 0 } },
+                    { impactLevel: { $exists: false } },
+                    { impactLevel: user.level }
+                ]
+            });
+        }
+
+        const policies = await Policy.find(query)
+            .select('-chunks -versions') // Exclude heavy chunks and versions
+            .sort({ title: 1 });
+
+        res.status(200).json({
+            statusCode: 200,
+            success: true,
+            data: policies
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get dynamic FAQs based on active policies
+// @route   POST /api/chat/faqs
+// @access  Private
+const getDynamicFAQs = async (req, res, next) => {
+    try {
+        const { policies } = req.body;
+        if (!policies || !Array.isArray(policies) || policies.length === 0) {
+            return res.status(400).json({ success: false, message: 'Policies array is required' });
+        }
+
+        const faqs = await aiService.generateDynamicFAQs(policies);
+
+        res.status(200).json({
+            statusCode: 200,
+            success: true,
+            data: faqs
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export {
     createConversation,
     getConversations,
     getMessages,
     sendMessage,
     deleteConversation,
+    getAvailablePolicies,
+    getDynamicFAQs
 };

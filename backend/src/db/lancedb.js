@@ -17,6 +17,8 @@ export const schema = new arrow.Schema([
     new arrow.Field("heading", new arrow.Utf8(), true),
     new arrow.Field("policy", new arrow.Utf8(), false),
     new arrow.Field("entity", new arrow.Utf8(), false), // Added entity field
+    new arrow.Field("impactLevel", new arrow.Utf8(), false),
+    new arrow.Field("empCategory", new arrow.Utf8(), false)
 ]);
 
 let table;

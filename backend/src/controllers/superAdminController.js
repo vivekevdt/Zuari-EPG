@@ -51,7 +51,7 @@ export const getVectorDbData = async (req, res, next) => {
         // Build filter string for LanceDB
         let filters = [];
         if (entity && entity !== 'All Entities') {
-            filters.push(`entity = '${entity}'`);
+            filters.push(`entity LIKE '%${entity}%'`);
         }
         if (policy && policy !== 'All Policies') {
             filters.push(`policy = '${policy}'`);

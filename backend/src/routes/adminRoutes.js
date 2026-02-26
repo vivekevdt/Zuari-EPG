@@ -19,16 +19,23 @@ import {
     updatePolicy,
     publishPolicy,
     downloadEmployeeTemplate,
-    uploadEmployees,
+    previewEmployeesCsv,
+    bulkCreateEmployees,
     getArchivedPolicies
 } from '../controllers/adminController.js';
 
-import { handlePlaygroundChat } from '../controllers/playground/playgroundController.js';
+import { handlePlaygroundChat, handlePlaygroundReset } from '../controllers/playground/playgroundController.js';
+import {
+    getConfigEntities, createConfigEntity, updateConfigEntity, deleteConfigEntity,
+    getImpactLevels, createImpactLevel, updateImpactLevel, deleteImpactLevel,
+    getEmployeeCategories, createEmployeeCategory, updateEmployeeCategory, deleteEmployeeCategory,
+    getPolicyCategories, createPolicyCategory, updatePolicyCategory, deletePolicyCategory,
+} from '../controllers/configController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 // Admin middleware to ensure user is admin
 const admin = (req, res, next) => {
-    if (req.user && (req.user.role === 'admin' || req.user.role === 'superAdmin')) {
+    if (req.user && (req.user.roles?.includes('admin') || req.user.roles?.includes('superAdmin'))) {
         next();
     } else {
         res.status(401);
@@ -95,7 +102,8 @@ router.get('/dashboard-stats', protect, admin, getDashboardStats);
 // User Management
 router.get('/users', protect, admin, getUsers);
 router.get('/download-template', protect, admin, downloadEmployeeTemplate);
-router.post('/upload-employees', protect, admin, uploadCsv.single('file'), uploadEmployees);
+router.post('/preview-employees-csv', protect, admin, uploadCsv.single('file'), previewEmployeesCsv);
+router.post('/bulk-upload-employees', protect, admin, bulkCreateEmployees);
 router.put('/users/:id', protect, admin, updateUser);
 router.delete('/users/:id', protect, admin, deleteUser);
 
@@ -122,7 +130,41 @@ router.delete('/policies/:id', protect, admin, deletePolicy);
 // Logs
 router.get('/logs', protect, admin, getLogs);
 
-// Playground Chat (New Separate Route)
+// Playground Chat
 router.post('/playground/chat', protect, admin, handlePlaygroundChat);
+router.post('/playground/chat/reset', protect, admin, handlePlaygroundReset);
+
+// ── Config Routes ──────────────────────────────────────────────────────────
+// Entities
+router.route('/config/entities')
+    .get(protect, admin, getConfigEntities)
+    .post(protect, admin, createConfigEntity);
+router.route('/config/entities/:id')
+    .put(protect, admin, updateConfigEntity)
+    .delete(protect, admin, deleteConfigEntity);
+
+// Impact Levels
+router.route('/config/impact-levels')
+    .get(protect, admin, getImpactLevels)
+    .post(protect, admin, createImpactLevel);
+router.route('/config/impact-levels/:id')
+    .put(protect, admin, updateImpactLevel)
+    .delete(protect, admin, deleteImpactLevel);
+
+// Employee Categories
+router.route('/config/employee-categories')
+    .get(protect, admin, getEmployeeCategories)
+    .post(protect, admin, createEmployeeCategory);
+router.route('/config/employee-categories/:id')
+    .put(protect, admin, updateEmployeeCategory)
+    .delete(protect, admin, deleteEmployeeCategory);
+
+// Policy Categories
+router.route('/config/policy-categories')
+    .get(protect, admin, getPolicyCategories)
+    .post(protect, admin, createPolicyCategory);
+router.route('/config/policy-categories/:id')
+    .put(protect, admin, updatePolicyCategory)
+    .delete(protect, admin, deletePolicyCategory);
 
 export default router;

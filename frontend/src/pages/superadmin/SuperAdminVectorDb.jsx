@@ -34,10 +34,14 @@ const SuperAdminVectorDb = () => {
         fetchVectorData(); // Initial load
     }, []);
 
-    // Effect to filter policies based on selected entity
     useEffect(() => {
         if (selectedEntity && selectedEntity !== "All Entities") {
-            const relevant = policies.filter(p => p.entity === selectedEntity);
+            const relevant = policies.filter(p => {
+                const ent = p.entity;
+                if (!ent) return false;
+                if (Array.isArray(ent)) return ent.some(e => e === selectedEntity || e._id === selectedEntity);
+                return ent === selectedEntity || ent._id === selectedEntity;
+            });
             setFilteredPolicies(relevant);
             // Reset policy selection if it doesn't belong to new entity
             if (selectedPolicy && !relevant.find(p => p.title === selectedPolicy)) {
@@ -91,7 +95,10 @@ const SuperAdminVectorDb = () => {
                                     {selectedRow.policy}
                                 </h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {selectedRow.heading} • {selectedRow.entity || "Global"}
+                                    {selectedRow.heading} • {selectedRow.entity ? selectedRow.entity.split(',').map(id => {
+                                        const e = entities.find(x => x._id === id);
+                                        return e ? e.name : id;
+                                    }).join(', ') : "Global"}
                                 </p>
                             </div>
                             <button
@@ -140,7 +147,7 @@ const SuperAdminVectorDb = () => {
                         >
                             <option value="">All Entities</option>
                             {entities.map(ent => (
-                                <option key={ent._id} value={ent.name}>{ent.name}</option>
+                                <option key={ent._id} value={ent._id}>{ent.name}</option>
                             ))}
                         </select>
                     </div>
@@ -204,7 +211,10 @@ const SuperAdminVectorDb = () => {
                                         <td className="px-6 py-4 text-xs font-mono text-gray-400">{row.id || "N/A"}</td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {row.entity || "Global"}
+                                                {row.entity ? row.entity.split(',').map(id => {
+                                                    const e = entities.find(x => x._id === id);
+                                                    return e ? e.name : id;
+                                                }).join(', ') : "Global"}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm font-bold text-gray-700 dark:text-gray-200">{row.policy}</td>

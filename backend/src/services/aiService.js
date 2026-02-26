@@ -8,6 +8,12 @@ You are a helpful HR Policy Assistant for employees of the organization.
 Your job is to answer employee questions clearly and accurately using the retrieved HR policy excerpts provided below.
 
 ========================
+USER PROFILE INFORMATION
+========================
+
+{USER_DATA}
+
+========================
 RETRIEVED POLICY EXCERPTS
 ========================
 
@@ -16,7 +22,16 @@ RETRIEVED POLICY EXCERPTS
 Guidelines:
 
 - Use the retrieved policy excerpts as your primary source of information.
-- If the answer is clearly stated in the excerpts, respond confidently.
+- Use USER PROFILE INFORMATION for employee-specific questions.
+- (e.g., level, department, location, employment type).
+
+- Use the retrieved policy excerpts for HR policy-related questions.
+
+- If the answer is clearly stated in USER PROFILE INFORMATION or policy excerpts, respond confidently.
+
+- VERY IMPORTANT: Do NOT provide policy details, budgets, or rules that apply ONLY to a different Impact Level or Employee Category than the user's current profile, UNLESS the user has an "admin" or "superAdmin" role. 
+  - If a user asks for information about a level they do not belong to, and they are not an admin, respond with: "<p>You are only authorized to view information relevant to your own level or role.</p>"
+
 - If the information is not available in the excerpts, say:
 
 "<p>This is not covered in the current HR policy. Please contact HR.</p>"
@@ -50,7 +65,8 @@ Structure your response as follows:
 
 
 
-const generateAIResponse = async (messages, userEntity) => {
+
+const generateAIResponse = async (messages, user) => {
     try {
         if (!config.GEMINI_API_KEY) {
             return "Server Error: Gemini API Key not configured.";
@@ -64,7 +80,7 @@ const generateAIResponse = async (messages, userEntity) => {
         let policyText = "No relevant policies found.";
         if (query) {
             try {
-                const searchResults = await searchPolicy(query, userEntity);
+                const searchResults = await searchPolicy(query, user);
                 if (searchResults && searchResults.length > 0) {
 
                     policyText = searchResults.map(r =>
@@ -79,8 +95,24 @@ const generateAIResponse = async (messages, userEntity) => {
             }
         }
 
-        const systemContent = SYSTEM_PROMPT_TEMPLATE.replace("{POLICY_TEXT}", policyText);
+        const userDataString = JSON.stringify({
+            roles: user.roles || ["employee"],
+            entity: user.entity ? {
+                name: user.entity.name,
+                entityCode: user.entity.entityCode
+            } : null,
+            level: user.level ? {
+                name: user.level.name
+            } : null,
+            empCategory: user.empCategory ? {
+                name: user.empCategory.name,
+                code: user.empCategory.code
+            } : null
+        }, null, 2);
 
+        const systemContent = SYSTEM_PROMPT_TEMPLATE
+            .replace("{POLICY_TEXT}", policyText)
+            .replace("{USER_DATA}", userDataString);
 
         // 3. Prepare messages for Gemini
         // Convert to Gemini format: { role: 'user' | 'model', parts: [{ text: '...' }] }
@@ -136,6 +168,56 @@ const generateAIResponse = async (messages, userEntity) => {
     }
 };
 
+const generateDynamicFAQs = async (policyNames) => {
+    try {
+        if (!config.GEMINI_API_KEY) {
+            return [];
+        }
+
+        const prompt = `
+You are an HR Policy Assistant. Based on the following available HR policies for the employee:
+[${policyNames.join(", ")}]
+
+Generate exactly 4 distinct Frequently Asked Questions (FAQs) that the employee might ask regarding these specific policies. 
+Ask simple questino of one sentence.
+dont include overtime question
+For each FAQ, provide the question. Do not include any greeting or explanation.
+
+Respond STRICTLY with a valid JSON array of objects. Each object must have the exact keys 'question'.
+Return ONLY the raw JSON string, no markdown ticks, no additional text.
+
+Example format:
+[
+  { "question": "What is the annual leave policy?" },
+  { "question": "Tell me about health insurance benefits." }
+]
+        `;
+
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                temperature: 0.2,
+                maxOutputTokens: 1024,
+            }
+        });
+
+        let text = response.text || (typeof response.text === 'function' ? response.text() : "");
+        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error("Failed to parse FAQ JSON from Gemini:", text);
+            return [];
+        }
+    } catch (error) {
+        console.error("Gemini FAQ Error:", error);
+        return [];
+    }
+};
+
 export default {
     generateAIResponse,
+    generateDynamicFAQs
 };

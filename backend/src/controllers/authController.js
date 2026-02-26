@@ -16,7 +16,7 @@ const authUser = async (req, res, next) => {
         const userData = await authService.loginUser(email, password);
 
         // Log Login Activity
-        await createLog(userData._id, userData.name, userData.role, userData.entity, 'User Logged In');
+        await createLog(userData._id, userData.name, userData.roles?.join(', ') || 'employee', userData.entity, 'User Logged In');
 
         res.status(200).json({
             statusCode: 200,
@@ -33,17 +33,17 @@ const authUser = async (req, res, next) => {
 // @access  Public
 const registerUser = async (req, res, next) => {
     try {
-        const { name, email, password, role, entity, level, status, entity_code } = req.body;
+        const { name, email, password, roles, entity, level, status, entity_code, empCategory } = req.body;
 
         if (!name || !email) {
             res.status(400);
             throw new Error('Please provide name and email');
         }
 
-        const userData = await authService.registerUser(name, email, password, role, entity, level, status, entity_code);
+        const userData = await authService.registerUser(name, email, password, roles, entity, level, status, entity_code, empCategory);
 
         // Log Registration
-        await createLog(userData._id, userData.name, userData.role, userData.entity, 'User Registered');
+        await createLog(userData._id, userData.name, userData.roles?.join(', ') || 'employee', userData.entity, 'User Registered');
 
         res.status(201).json({
             statusCode: 201,
@@ -63,7 +63,7 @@ const logoutUser = async (req, res, next) => {
         // Since JWT is stateless, we just log the event. 
         // In a real app with token blacklisting, we would blacklist the token here.
         if (req.user) {
-            await createLog(req.user._id, req.user.name, req.user.role, req.user.entity, 'User Logged Out');
+            await createLog(req.user._id, req.user.name, req.user.roles?.join(', ') || 'employee', req.user.entity, 'User Logged Out');
         }
         res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
@@ -86,7 +86,7 @@ const activateAccount = async (req, res, next) => {
         const userData = await authService.activateUserAccount(email, currentPassword, newPassword);
 
         // Log Activation
-        await createLog(userData._id, userData.name, userData.role, userData.entity, 'Account Activated');
+        await createLog(userData._id, userData.name, userData.roles?.join(', ') || 'employee', userData.entity, 'Account Activated');
 
         res.status(200).json({
             statusCode: 200,

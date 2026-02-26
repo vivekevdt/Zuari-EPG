@@ -138,6 +138,39 @@ export const sendMessage = async (conversationId, content) => {
 };
 
 
+export const getAvailableEmployeePolicies = async () => {
+    try {
+        const response = await fetch(`${API_URL}/api/chat/policies`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch available policies');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const getDynamicFAQs = async (policies) => {
+    try {
+        const response = await fetch(`${API_URL}/api/chat/faqs`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ policies }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch dynamic FAQs');
+        }
+        return data.data; // This returns the array of 4 JSON FAQ objects
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const deleteConversation = async (conversationId) => {
     try {
         const response = await fetch(`${API_URL}/api/chat/${conversationId}`, {
@@ -484,6 +517,22 @@ export const playgroundChat = async (message, entity, policies) => {
     }
 };
 
+export const resetPlaygroundChat = async () => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/playground/chat/reset`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to reset chat memory');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const getVectorDbData = async (filters) => {
     try {
         const queryParams = new URLSearchParams(filters).toString();
@@ -524,7 +573,7 @@ export const downloadEmployeeTemplate = async () => {
     }
 };
 
-export const uploadEmployees = async (file) => {
+export const previewEmployeesCsv = async (file) => {
     try {
         const formData = new FormData();
         formData.append('file', file);
@@ -532,7 +581,7 @@ export const uploadEmployees = async (file) => {
         const userInfo = localStorage.getItem('userInfo');
         const token = userInfo ? JSON.parse(userInfo).token : null;
 
-        const response = await fetch(`${API_URL}/api/admin/upload-employees`, {
+        const response = await fetch(`${API_URL}/api/admin/preview-employees-csv`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -541,7 +590,24 @@ export const uploadEmployees = async (file) => {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || 'Failed to upload employees');
+            throw new Error(data.message || 'Failed to preview CSV');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const bulkCreateEmployees = async (employees) => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/bulk-upload-employees`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ employees }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to bulk create employees');
         }
         return data;
     } catch (error) {
@@ -549,3 +615,109 @@ export const uploadEmployees = async (file) => {
     }
 };
 
+// ─── Config API ──────────────────────────────────────────────────────────────
+
+// Entities (Config)
+export const getConfigEntities = async () => {
+    const r = await fetch(`${API_URL}/api/admin/config/entities`, { headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to fetch entities');
+    return d.data;
+};
+export const createConfigEntity = async (payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/entities`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to create entity');
+    return d.data;
+};
+export const updateConfigEntity = async (id, payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/entities/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to update entity');
+    return d.data;
+};
+export const deleteConfigEntity = async (id) => {
+    const r = await fetch(`${API_URL}/api/admin/config/entities/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to delete entity');
+    return d;
+};
+
+// Impact Levels
+export const getImpactLevels = async (entityId) => {
+    const q = entityId ? `?entity=${entityId}` : '';
+    const r = await fetch(`${API_URL}/api/admin/config/impact-levels${q}`, { headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to fetch impact levels');
+    return d.data;
+};
+export const createImpactLevel = async (payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/impact-levels`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to create impact level');
+    return d.data;
+};
+export const updateImpactLevel = async (id, payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/impact-levels/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to update impact level');
+    return d.data;
+};
+export const deleteImpactLevel = async (id) => {
+    const r = await fetch(`${API_URL}/api/admin/config/impact-levels/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to delete impact level');
+    return d;
+};
+
+// Employee Categories
+export const getEmployeeCategories = async () => {
+    const r = await fetch(`${API_URL}/api/admin/config/employee-categories`, { headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to fetch employee categories');
+    return d.data;
+};
+export const createEmployeeCategory = async (payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/employee-categories`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to create employee category');
+    return d.data;
+};
+export const updateEmployeeCategory = async (id, payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/employee-categories/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to update employee category');
+    return d.data;
+};
+export const deleteEmployeeCategory = async (id) => {
+    const r = await fetch(`${API_URL}/api/admin/config/employee-categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to delete employee category');
+    return d;
+};
+
+// Policy Categories
+export const getPolicyCategories = async () => {
+    const r = await fetch(`${API_URL}/api/admin/config/policy-categories`, { headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to fetch policy categories');
+    return d.data;
+};
+export const createPolicyCategory = async (payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/policy-categories`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to create policy category');
+    return d.data;
+};
+export const updatePolicyCategory = async (id, payload) => {
+    const r = await fetch(`${API_URL}/api/admin/config/policy-categories/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to update policy category');
+    return d.data;
+};
+export const deletePolicyCategory = async (id) => {
+    const r = await fetch(`${API_URL}/api/admin/config/policy-categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Failed to delete policy category');
+    return d;
+};

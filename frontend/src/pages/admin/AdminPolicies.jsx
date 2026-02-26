@@ -6,16 +6,99 @@ import {
     chunkPolicy,
     publishPolicy,
     deletePolicy,
-    updatePolicy
+    updatePolicy,
+    getImpactLevels,
+    getEmployeeCategories
 } from '../../api';
 
 import ConfirmationModal from '../../components/ConfirmationModal';
+
+const CustomMultiSelect = ({ label, options, selectedValues, onChange, placeholder }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const toggleOption = (value) => {
+        if (selectedValues.includes(value)) {
+            onChange(selectedValues.filter(v => v !== value));
+        } else {
+            onChange([...selectedValues, value]);
+        }
+    };
+
+    return (
+        <div className="relative">
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{label}</label>
+            <div
+                className="w-full relative z-20 p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 outline-none focus-within:ring-2 focus-within:ring-blue-500 font-medium text-gray-700 min-h-[56px] cursor-pointer flex flex-wrap gap-2 items-center"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                {selectedValues.length === 0 && <span className="text-gray-400">{placeholder}</span>}
+                {selectedValues.map(val => {
+                    const option = options.find(o => o.value === val);
+                    return (
+                        <span key={val} className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-2 dark:bg-blue-900 dark:text-blue-300">
+                            {option ? option.label : val}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); toggleOption(val); }} className="hover:text-red-500 transition-colors w-4 h-4 rounded-full flex items-center justify-center leading-none">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </span>
+                    );
+                })}
+            </div>
+
+            {isOpen && (
+                <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)}></div>
+                    <div className="absolute z-30 w-full mt-2 max-h-60 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none">
+                        {options.length > 0 && (
+                            <div
+                                className="px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer flex items-center gap-3 text-gray-700 dark:text-gray-200 font-medium transition-colors border-b border-gray-50 dark:border-slate-700/50"
+                                onClick={() => {
+                                    if (selectedValues.length === options.length) {
+                                        onChange([]);
+                                    } else {
+                                        onChange(options.map(o => o.value));
+                                    }
+                                }}
+                            >
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${selectedValues.length === options.length && options.length > 0 ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                                    {selectedValues.length === options.length && options.length > 0 && (
+                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                    )}
+                                </div>
+                                <span className="font-bold text-blue-600 dark:text-blue-400">Select All</span>
+                            </div>
+                        )}
+                        {options.map(option => (
+                            <div
+                                key={option.value}
+                                className="px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer flex items-center gap-3 text-gray-700 dark:text-gray-200 font-medium transition-colors border-b border-gray-50 dark:border-slate-700/50 last:border-0"
+                                onClick={() => toggleOption(option.value)}
+                            >
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${selectedValues.includes(option.value) ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                                    {selectedValues.includes(option.value) && (
+                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                    )}
+                                </div>
+                                <span>{option.label}</span>
+                            </div>
+                        ))}
+                        {options.length === 0 && (
+                            <div className="px-5 py-4 text-gray-500 dark:text-gray-400 text-sm">No options available</div>
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
 
 const AdminPolicies = () => {
     // Data State
     const [policies, setPolicies] = useState([]);
     const [archivedPolicies, setArchivedPolicies] = useState([]);
     const [entities, setEntities] = useState([]);
+    const [impactLevels, setImpactLevels] = useState([]);
+    const [empCategories, setEmpCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Filter State
@@ -32,9 +115,13 @@ const AdminPolicies = () => {
     // Upload Form State
     const [isUploading, setIsUploading] = useState(false);
     const [uploadTitle, setUploadTitle] = useState('');
-    const [uploadEntity, setUploadEntity] = useState('');
+    const [uploadEntities, setUploadEntities] = useState([]);
+    const [uploadImpactLevels, setUploadImpactLevels] = useState([]);
+    const [uploadEmpCategories, setUploadEmpCategories] = useState([]);
+    const [uploadDescription, setUploadDescription] = useState('');
     const [uploadCategory, setUploadCategory] = useState('HR - General');
     const [uploadExpiry, setUploadExpiry] = useState('');
+    const [noExpiry, setNoExpiry] = useState(false);
     const [changeNote, setChangeNote] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
     const [editingPolicyId, setEditingPolicyId] = useState(null);
@@ -50,12 +137,26 @@ const AdminPolicies = () => {
 
     // Categories List (Hardcoded for now as per design)
     const categories = [
-        'HR - General',
-        'HR - Recruitment',
-        'HR - Compensation',
-        'Legal',
-        'IT Security',
-        'Operations'
+        'Leave & Holidays',
+        'Time & Attendance',
+        'Travel & Expenses',
+        'Benefits & Perks',
+        'Events & Activities',
+        'HR - General'
+    ];
+
+    // Hardcoded Entity List (Fallback)
+    const AVAILABLE_ENTITIES = [
+        { code: 'ZIL', name: 'Zuari Industries Ltd' },
+        { code: 'ZIIL', name: 'Zuari Infraworld India Ltd' },
+        { code: 'SIL', name: 'Simon India Ltd' },
+        { code: 'ZIntL', name: 'Zuari International' },
+        { code: 'ZFL', name: 'Zuari Finserv Ltd' },
+        { code: 'ZIBL', name: 'Zuari Insurance Brokers Ltd' },
+        { code: 'ZMSL', name: 'Zuari Management Services Ltd' },
+        { code: 'FFPL', name: 'Forte Furniture Products India Pvt Ltd' },
+        { code: 'IFPL', name: 'Indian Furniture Private Ltd' },
+        { code: 'ZEBPL', name: 'Zuari Envien Bioenergy Pvt Ltd' }
     ];
 
     // Close menu when clicking outside
@@ -71,16 +172,24 @@ const AdminPolicies = () => {
 
     const fetchData = async () => {
         try {
-            const [policiesData, entitiesData, archivedData] = await Promise.all([
+            const [policiesData, entitiesData, archivedData, impactsData, categoriesData] = await Promise.all([
                 getPolicies(),
                 getEntities(),
-                getArchivedPolicies()
+                getArchivedPolicies(),
+                getImpactLevels(),
+                getEmployeeCategories()
             ]);
             setPolicies(policiesData);
             setEntities(entitiesData);
             setArchivedPolicies(archivedData);
-            if (entitiesData.length > 0 && !uploadEntity) {
-                setUploadEntity(entitiesData[0].name);
+            setImpactLevels(impactsData);
+            setEmpCategories(categoriesData);
+
+            // Fallback to hardcoded entities if API returns empty
+            const validEntities = entitiesData.length > 0 ? entitiesData : AVAILABLE_ENTITIES.map(e => ({ _id: e.code, name: e.name }));
+
+            if (entitiesData.length === 0) {
+                setEntities(validEntities);
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -123,7 +232,7 @@ const AdminPolicies = () => {
 
     const handleUpload = async (e) => {
         e.preventDefault();
-        if ((!selectedFile && !editingPolicyId) || !uploadTitle || !uploadEntity) {
+        if ((!selectedFile && !editingPolicyId) || !uploadTitle || uploadEntities.length === 0) {
             toast.error("Please fill all required fields and select a file");
             return;
         }
@@ -134,9 +243,13 @@ const AdminPolicies = () => {
             formData.append('policyDocument', selectedFile);
         }
         formData.append('title', uploadTitle);
-        formData.append('entity', uploadEntity);
+        formData.append('entity', JSON.stringify(uploadEntities));
+        formData.append('impactLevel', JSON.stringify(uploadImpactLevels));
+        formData.append('empCategory', JSON.stringify(uploadEmpCategories));
+        formData.append('description', uploadDescription);
+
         if (uploadCategory) formData.append('category', uploadCategory);
-        if (uploadExpiry) formData.append('expiryDate', uploadExpiry);
+        if (!noExpiry && uploadExpiry) formData.append('expiryDate', uploadExpiry);
         if (changeNote) formData.append('changeNote', changeNote);
 
         try {
@@ -164,16 +277,31 @@ const AdminPolicies = () => {
         setUploadTitle('');
         setUploadCategory('HR - General');
         setUploadExpiry('');
+        setNoExpiry(false);
         setChangeNote('');
-        if (entities.length > 0) setUploadEntity(entities[0].name);
+        setUploadEntities([]);
+        setUploadImpactLevels([]);
+        setUploadEmpCategories([]);
+        setUploadDescription('');
         setEditingPolicyId(null);
     };
 
     const handleUpdateClick = (policy) => {
         setUploadTitle(policy.title);
-        setUploadEntity(policy.entity);
+
+        setUploadEntities(Array.isArray(policy.entity) ? policy.entity : (policy.entity ? [policy.entity] : []));
+        setUploadImpactLevels(Array.isArray(policy.impactLevel) ? policy.impactLevel : []);
+        setUploadEmpCategories(Array.isArray(policy.empCategory) ? policy.empCategory : []);
+        setUploadDescription(policy.description || '');
+
         setUploadCategory(policy.category || 'HR - General');
-        setUploadExpiry(policy.expiryDate ? new Date(policy.expiryDate).toISOString().split('T')[0] : '');
+        if (policy.expiryDate) {
+            setUploadExpiry(new Date(policy.expiryDate).toISOString().split('T')[0]);
+            setNoExpiry(false);
+        } else {
+            setUploadExpiry('');
+            setNoExpiry(true);
+        }
         setEditingPolicyId(policy._id);
         setSelectedFile(null);
         setViewMode('upload');
@@ -239,14 +367,12 @@ const AdminPolicies = () => {
 
     // Filtering
     const filteredPolicies = policies.filter(policy => {
-        const matchesEntity = filterEntity === 'All Entities' || policy.entity === filterEntity;
+        const matchesEntity = filterEntity === 'All Entities' ||
+            (Array.isArray(policy.entity) ? policy.entity.some(e => e === filterEntity || (e && e._id === filterEntity)) : (policy.entity === filterEntity || (policy.entity && policy.entity._id === filterEntity)));
         const matchesCategory = filterCategory === 'All Categories' || (policy.category || 'General') === filterCategory;
         const matchesSearch = !searchQuery || policy.title.toLowerCase().includes(searchQuery.toLowerCase());
         const isNotArchived = showArchiveModal || policy.status !== 'archived'; // Only show archived in modal/archive view if we implemented that logic.
 
-        // For now, let's assume 'Archived' is a status, but we don't manipulate that explicitly yet.
-        // If we want the Archive Modal to show archived policies:
-        // Then the main list should NOT show archived policies unless we want them mixed.
         return matchesEntity && matchesCategory && matchesSearch;
     });
 
@@ -314,7 +440,7 @@ const AdminPolicies = () => {
                         >
                             <option>All Entities</option>
                             {entities.map(ent => (
-                                <option key={ent._id} value={ent.name}>{ent.name}</option>
+                                <option key={ent._id} value={ent._id}>{ent.name}</option>
                             ))}
                         </select>
                     </div>
@@ -374,32 +500,70 @@ const AdminPolicies = () => {
                                     ))}
                                 </select>
                             </div>
+                            <div className="relative z-50">
+                                <CustomMultiSelect
+                                    label="Target Entities"
+                                    options={entities.map(e => ({ value: e._id, label: e.name }))}
+                                    selectedValues={uploadEntities}
+                                    onChange={setUploadEntities}
+                                    placeholder="Select one or more entities..."
+                                />
+                            </div>
+
+                            <div className="relative z-40">
+                                <CustomMultiSelect
+                                    label="Impact Levels"
+                                    options={uploadEntities.length > 0 ? impactLevels.filter(i => uploadEntities.includes(i.entity?._id || i.entity)).map(i => ({ value: i._id, label: `${i.name} (${i.entity?.name})` })) : []}
+                                    selectedValues={uploadImpactLevels}
+                                    onChange={setUploadImpactLevels}
+                                    placeholder={uploadEntities.length === 0 ? "Please select a Target Entity first..." : "Select impact levels..."}
+                                />
+                            </div>
+
+                            <div className="relative z-30">
+                                <CustomMultiSelect
+                                    label="Employee Categories"
+                                    options={empCategories.map(c => ({ value: c._id, label: `${c.name} (${c.code})` }))}
+                                    selectedValues={uploadEmpCategories}
+                                    onChange={setUploadEmpCategories}
+                                    placeholder="Select employee categories..."
+                                />
+                            </div>
+
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Target Entity</label>
-                                <select
-                                    value={uploadEntity}
-                                    onChange={(e) => setUploadEntity(e.target.value)}
-                                    className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700"
-                                >
-                                    {entities.map(ent => (
-                                        <option key={ent._id} value={ent.name}>{ent.name}</option>
-                                    ))}
-                                </select>
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Policy Description</label>
+                                <textarea
+                                    value={uploadDescription}
+                                    onChange={(e) => setUploadDescription(e.target.value)}
+                                    placeholder="Provide a brief description of the policy..."
+                                    className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700 resize-none h-32"
+                                />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expiry Date</label>
-                                <div className="relative">
-                                    <input
-                                        type="date"
-                                        value={uploadExpiry}
-                                        onChange={(e) => setUploadExpiry(e.target.value)}
-                                        className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700"
-                                    />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                                        <input type="checkbox" id="noExpiry" className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300" />
-                                        <label htmlFor="noExpiry" className="text-xs font-bold text-gray-400 uppercase">No Expiry</label>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Expiry Date</label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="noExpiry"
+                                            checked={noExpiry}
+                                            onChange={(e) => {
+                                                setNoExpiry(e.target.checked);
+                                                if (e.target.checked) setUploadExpiry('');
+                                            }}
+                                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
+                                        />
+                                        <label htmlFor="noExpiry" className="text-xs font-bold text-gray-400 uppercase cursor-pointer select-none">No Expiry</label>
                                     </div>
                                 </div>
+                                <input
+                                    type="date"
+                                    value={uploadExpiry}
+                                    min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                                    disabled={noExpiry}
+                                    onChange={(e) => setUploadExpiry(e.target.value)}
+                                    className={`w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700 ${noExpiry ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                />
                             </div>
 
                             {editingPolicyId && (
@@ -458,8 +622,8 @@ const AdminPolicies = () => {
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2 text-gray-400 text-xs mt-4">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div className="flex items-center gap-2 text-orange-500 font-bold text-sm mt-4">
+                            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                             <span>Only upload selectable PDFs or Word documents. Scanned docs/images will not be parsed.</span>
                         </div>
 
@@ -483,19 +647,22 @@ const AdminPolicies = () => {
                 </div>
             ) : (
                 <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-slate-700">
-                    <div className="">
-                        <table className="w-full">
+                    <div className="overflow-x-auto custom-scrollbar min-h-[400px]">
+                        <table className="w-full min-w-[1000px]">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-slate-700">
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider w-16">Index</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Policy Document</th>
-                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Entity</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Target Entities</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Impact Levels</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Emp. Categories</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Version</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Category</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</th>
                                     <th className="text-center py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chunked</th>
                                     <th className="text-center py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Published</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date Uploaded</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Expiry Date</th>
                                     <th className="text-right py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -513,8 +680,64 @@ const AdminPolicies = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-4">
-                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{policy.entity}</span>
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="flex flex-col gap-1 items-start">
+                                                {(() => {
+                                                    const ents = Array.isArray(policy.entity) ? policy.entity : (policy.entity ? [policy.entity] : []);
+                                                    const visible = ents.slice(0, 3);
+                                                    const remaining = ents.length - 3;
+                                                    return (
+                                                        <>
+                                                            {visible.map((ent, i) => {
+                                                                const entityObj = entities.find(e => e._id === ent);
+                                                                return (
+                                                                    <span key={i} className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-[10px] font-bold truncate max-w-[120px]" title={entityObj ? entityObj.name : ent}>
+                                                                        {entityObj ? entityObj.name : ent}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                            {remaining > 0 && (
+                                                                <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold">
+                                                                    +{remaining} more
+                                                                </span>
+                                                            )}
+                                                            {ents.length === 0 && <span className="text-gray-400 text-xs">-</span>}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="grid grid-cols-3 gap-1 items-start min-w-[150px]">
+                                                {(() => {
+                                                    if (!policy.impactLevel || policy.impactLevel.length === 0) return <span className="text-gray-400 text-xs col-span-3">-</span>;
+                                                    return policy.impactLevel.map((impactId, i) => {
+                                                        const impact = impactLevels.find(il => il._id === impactId);
+                                                        if (!impact) return null;
+                                                        return (
+                                                            <span key={i} className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-[10px] font-bold truncate text-center" title={impact.name}>
+                                                                {impact.name}
+                                                            </span>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="grid grid-cols-3 gap-1 items-start min-w-[150px]">
+                                                {(() => {
+                                                    if (!policy.empCategory || policy.empCategory.length === 0) return <span className="text-gray-400 text-xs col-span-3">-</span>;
+                                                    return policy.empCategory.map((catId, i) => {
+                                                        const cat = empCategories.find(c => c._id === catId);
+                                                        if (!cat) return null;
+                                                        return (
+                                                            <span key={i} className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold truncate text-center" title={cat.name}>
+                                                                {cat.code || cat.name}
+                                                            </span>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
                                         </td>
                                         <td className="py-4 px-4">
                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 uppercase tracking-wide">
@@ -565,6 +788,23 @@ const AdminPolicies = () => {
                                                 {new Date(policy.uploadDate).toLocaleDateString()}
                                             </div>
                                         </td>
+                                        <td className="py-4 px-4">
+                                            {(() => {
+                                                if (!policy.expiryDate) {
+                                                    return <div className="text-sm font-semibold text-gray-600 dark:text-gray-400">No Expiry</div>;
+                                                }
+                                                const expDate = new Date(policy.expiryDate);
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+
+                                                const isExpired = expDate <= today;
+                                                return (
+                                                    <div className={`text-sm font-semibold ${isExpired ? 'text-red-500 font-bold' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                        {expDate.toLocaleDateString()}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
                                         <td className="py-4 px-4 text-right">
                                             <div className="relative flex justify-end">
                                                 <button
@@ -578,7 +818,7 @@ const AdminPolicies = () => {
                                                 </button>
 
                                                 {activeMenuId === policy._id && (
-                                                    <div className="absolute top-10 right-0 z-50 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 py-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                                                    <div className="absolute top-[36px] right-8 z-[9999] w-48 bg-white dark:bg-slate-800 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-slate-700 py-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
 
                                                         {/* Download */}
                                                         <button

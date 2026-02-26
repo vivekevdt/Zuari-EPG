@@ -12,7 +12,7 @@ const loginUser = async (email, password) => {
             _id: user._id,
             name: user.name,
             email: user.email,
-            role: user.role,
+            roles: user.roles,
             entity: user.entity,
             is_account_activated: user.is_account_activated,
             token: generateToken(user._id, user.name, user.email),
@@ -22,10 +22,11 @@ const loginUser = async (email, password) => {
     }
 };
 
-const registerUser = async (name, email, password, role, entity, level, status, entity_code) => {
+const registerUser = async (name, email, password, roles, entity, level, status, entity_code, empCategory, skipIfExists = false) => {
     const userExists = await User.findOne({ email });
 
     if (userExists) {
+        if (skipIfExists) return userExists;
         throw new Error('User already exists');
     }
 
@@ -37,15 +38,28 @@ const registerUser = async (name, email, password, role, entity, level, status, 
 
     const cleaningStatus = status ? status.toLowerCase() : "active";
 
+    // Normalize roles: accept string or array, default to ['employee']
+    let normalizedRoles = ['employee'];
+    if (roles) {
+        if (Array.isArray(roles)) {
+            normalizedRoles = roles;
+        } else if (typeof roles === 'string') {
+            // Handle legacy single role string
+            const roleMap = { 'user': 'employee' };
+            normalizedRoles = [roleMap[roles] || roles];
+        }
+    }
+
     const user = await User.create({
         name,
         email,
         password: hashedPassword,
-        role,
-        entity,
-        level,
+        roles: normalizedRoles,
+        entity: entity || null,
+        level: level || null,
         status: cleaningStatus,
-        entity_code,
+        entity_code: entity_code || '',
+        empCategory: empCategory || null,
         is_account_activated: false // Force activation/reset on first login
     });
 
@@ -58,7 +72,7 @@ const registerUser = async (name, email, password, role, entity, level, status, 
             name: user.name,
             email: user.email,
             token: generateToken(user._id, user.name, user.email),
-            role: user.role,
+            roles: user.roles,
             entity: user.entity,
             level: user.level,
             status: user.status,
@@ -84,7 +98,7 @@ const activateUserAccount = async (email, currentPassword, newPassword) => {
             _id: updatedUser._id,
             name: updatedUser.name,
             email: updatedUser.email,
-            role: updatedUser.role,
+            roles: updatedUser.roles,
             entity: updatedUser.entity,
             is_account_activated: true,
             token: generateToken(updatedUser._id, updatedUser.name, updatedUser.email),

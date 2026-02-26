@@ -3,6 +3,9 @@ import Conversation from '../models/Conversation.js';
 import Entity from '../models/Entity.js';
 import Policy from '../models/Policy.js';
 import Log from '../models/Log.js';
+import Message from '../models/Message.js';
+import EmployeeCategory from '../models/EmployeeCategory.js';
+import ImpactLevel from '../models/ImpactLevel.js';
 // We will need a service to handle chunking logic, but for now we can simulate or create a placeholder
 import { processPolicyFile, publishPolicy as publishPolicyService, deleteChunks } from '../services/chunkService.js';
 import XLSX from 'xlsx';
@@ -17,7 +20,7 @@ import authService from '../services/authService.js';
 // @access  Private/Admin
 const getDashboardStats = async (req, res, next) => {
     try {
-        const totalEmployees = await User.countDocuments({ role: 'user' });
+        const totalEmployees = await User.countDocuments({ roles: 'employee' });
         const totalEntities = await Entity.countDocuments();
         const totalInteractions = await Conversation.countDocuments();
         const activePolicies = await Policy.countDocuments({ status: 'live' });
@@ -53,7 +56,13 @@ const getDashboardStats = async (req, res, next) => {
 // @access  Private/Admin
 const getUsers = async (req, res, next) => {
     try {
-        const users = await User.find({ role: 'user' }).select('-password').sort({ createdAt: -1 });
+        // Fetch all users who are NOT superAdmin, populate linked config refs
+        const users = await User.find({ roles: { $not: { $all: ['superAdmin'] }, $nin: [] } })
+            .select('-password')
+            .populate('entity', 'name entityCode')
+            .populate('level', 'name')
+            .populate('empCategory', 'name code')
+            .sort({ createdAt: -1 });
         res.status(200).json({
             success: true,
             data: users
@@ -74,12 +83,16 @@ const deleteUser = async (req, res, next) => {
         if (user) {
             await User.findByIdAndDelete(req.params.id);
 
+            // Cascade delete user conversations and messages
+            await Conversation.deleteMany({ userId: user._id });
+            await Message.deleteMany({ userId: user._id });
+
             // Log User Deletion
             await Log.create({
                 logDescription: `User Deleted: ${user.name}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -103,7 +116,15 @@ const updateUser = async (req, res, next) => {
         if (user) {
             user.name = req.body.name || user.name;
             user.email = req.body.email || user.email;
-            user.entity = req.body.entity || user.entity;
+            user.entity = req.body.entity !== undefined ? (req.body.entity || null) : user.entity;
+            user.entity_code = req.body.entity_code ?? user.entity_code;
+            user.level = req.body.level !== undefined ? (req.body.level || null) : user.level;
+            user.empCategory = req.body.empCategory !== undefined ? (req.body.empCategory || null) : user.empCategory;
+            user.status = req.body.status || user.status;
+
+            if (req.body.roles && Array.isArray(req.body.roles) && req.body.roles.length > 0) {
+                user.roles = req.body.roles;
+            }
 
             if (req.body.password) {
                 user.password = req.body.password;
@@ -116,7 +137,7 @@ const updateUser = async (req, res, next) => {
                 logDescription: `User Updated: ${updatedUser.name}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -124,8 +145,12 @@ const updateUser = async (req, res, next) => {
                 _id: updatedUser._id,
                 name: updatedUser.name,
                 email: updatedUser.email,
+                roles: updatedUser.roles,
                 entity: updatedUser.entity,
-                role: updatedUser.role,
+                entity_code: updatedUser.entity_code,
+                level: updatedUser.level,
+                empCategory: updatedUser.empCategory,
+                status: updatedUser.status,
             });
         } else {
             res.status(404);
@@ -174,12 +199,12 @@ const getInteractions = async (req, res, next) => {
         if (startDate || endDate) {
             conversationQuery.updatedAt = {};
             if (startDate) {
-                conversationQuery.updatedAt.$gte = new Date(startDate);
+                // Parse as local start of day
+                conversationQuery.updatedAt.$gte = new Date(`${startDate}T00:00:00`);
             }
             if (endDate) {
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                conversationQuery.updatedAt.$lte = end;
+                // Parse as local end of day
+                conversationQuery.updatedAt.$lte = new Date(`${endDate}T23:59:59.999`);
             }
         }
 
@@ -297,7 +322,7 @@ const deleteEntity = async (req, res, next) => {
                 logDescription: `Entity Deleted: ${entityToDelete.name}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -307,7 +332,7 @@ const deleteEntity = async (req, res, next) => {
             });
         } else {
             res.status(404);
-            throw new Error('Entity not found');
+            throw new Error('Entity not found')
         }
     } catch (error) {
         next(error);
@@ -355,7 +380,7 @@ const updateEntity = async (req, res, next) => {
                 logDescription: `Entity Updated: ${oldName} -> ${updatedEntity.name} (${updatedEntity.entityCode})`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -409,17 +434,30 @@ const uploadPolicy = async (req, res, next) => {
             throw new Error('Please upload a file');
         }
 
-        const { title, entity, category, expiryDate } = req.body;
+        const { title, category, expiryDate, description } = req.body;
+        let { entity, impactLevel, empCategory } = req.body;
 
-        if (!title || !entity) {
+        const parseArray = (field) => {
+            if (!field) return [];
+            try { return JSON.parse(field); } catch (e) { return Array.isArray(field) ? field : [field]; }
+        };
+
+        entity = parseArray(entity);
+        impactLevel = parseArray(impactLevel);
+        empCategory = parseArray(empCategory);
+
+        if (!title || !entity || !entity.length) {
             res.status(400);
-            throw new Error('Title and Entity are required');
+            throw new Error('Title and at least one Entity are required');
         }
 
         const policy = await Policy.create({
             title,
             filename: req.file.filename,
             entity,
+            impactLevel,
+            empCategory,
+            description: description || '',
             category: category || 'General',
             expiryDate: expiryDate || null,
             status: 'draft' // Default status changed to draft to match UI
@@ -462,7 +500,7 @@ const createChunks = async (req, res, next) => {
             logDescription: `Policy Chunked: ${policy.title}`,
             userId: req.user._id,
             name: req.user.name,
-            role: req.user.role,
+            role: req.user.roles?.join(', ') || 'employee',
             entity: req.user.entity
         });
 
@@ -513,7 +551,7 @@ const deletePolicy = async (req, res, next) => {
                 logDescription: `Policy Deleted: ${policy.title}`,
                 userId: req.user._id,
                 name: req.user.name,
-                role: req.user.role,
+                role: req.user.roles?.join(', ') || 'employee',
                 entity: req.user.entity
             });
 
@@ -547,7 +585,17 @@ const updatePolicy = async (req, res, next) => {
         const oldEntity = policy.entity;
         const currentVersion = policy.version || '1.0';
 
-        const { title, entity, category, expiryDate, changeNote } = req.body;
+        const { title, category, expiryDate, changeNote, description } = req.body;
+        let { entity, impactLevel, empCategory } = req.body;
+
+        const parseArray = (field) => {
+            if (!field) return undefined;
+            try { return JSON.parse(field); } catch (e) { return Array.isArray(field) ? field : [field]; }
+        };
+
+        const newEntity = parseArray(entity);
+        const newImpactLevel = parseArray(impactLevel);
+        const newEmpCategory = parseArray(empCategory);
 
         // Create version history entry
         const historyEntry = {
@@ -567,6 +615,9 @@ const updatePolicy = async (req, res, next) => {
             title: `${oldTitle} (v${currentVersion})`,
             filename: policy.filename, // keep old filename
             entity: oldEntity,
+            impactLevel: policy.impactLevel,
+            empCategory: policy.empCategory,
+            description: policy.description,
             category: policy.category,
             uploadDate: policy.uploadDate,
             expiryDate: policy.expiryDate,
@@ -587,14 +638,21 @@ const updatePolicy = async (req, res, next) => {
 
 
         if (title) policy.title = title;
-        if (entity) policy.entity = entity;
+        if (newEntity) policy.entity = newEntity;
+        if (newImpactLevel) policy.impactLevel = newImpactLevel;
+        if (newEmpCategory) policy.empCategory = newEmpCategory;
+        if (description !== undefined) policy.description = description;
+
         if (category) policy.category = category;
         // Handle date properly, allowing clearing it if sent as null/empty
         if (expiryDate !== undefined) policy.expiryDate = expiryDate;
 
         // If title or entity changed, delete old chunks from vector DB
-        if ((title && title !== oldTitle) || (entity && entity !== oldEntity)) {
-            await deleteChunks(oldTitle, oldEntity);
+        // We only check if entity has changed. Assuming oldEntity[0] for deleteChunks if it's an array mismatch.
+        // Or if changed, we just use the first item to delete chunks for now.
+        const entityChanged = newEntity && JSON.stringify(newEntity) !== JSON.stringify(oldEntity);
+        if ((title && title !== oldTitle) || entityChanged) {
+            await deleteChunks(oldTitle, oldEntity[0] || oldEntity);
             // If policy was live, we should reset status because vector data is now gone/stale
             if (policy.status === 'live') {
                 policy.status = 'chunked'; // Ready to publish again with new metadata
@@ -618,7 +676,7 @@ const updatePolicy = async (req, res, next) => {
             logDescription: `Policy Updated: ${updatedPolicy.title} to v${updatedPolicy.version}`,
             userId: req.user._id,
             name: req.user.name,
-            role: req.user.role,
+            role: req.user.roles?.join(', ') || 'employee',
             entity: req.user.entity
         });
 
@@ -642,6 +700,11 @@ const getLogs = async (req, res, next) => {
 
         let query = {};
 
+        // Only allow superAdmins to see superAdmin logs
+        if (req.user && !req.user.roles?.includes('superAdmin')) {
+            query.role = { $not: /superAdmin/i };
+        }
+
         if (employeeName) {
             query.name = { $regex: employeeName, $options: 'i' };
         }
@@ -653,17 +716,18 @@ const getLogs = async (req, res, next) => {
         if (startDate || endDate) {
             query.createdAt = {};
             if (startDate) {
-                query.createdAt.$gte = new Date(startDate);
+                // Parse as local start of day
+                query.createdAt.$gte = new Date(`${startDate}T00:00:00`);
             }
             if (endDate) {
-                // Set end date to end of day
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                query.createdAt.$lte = end;
+                // Parse as local end of day
+                query.createdAt.$lte = new Date(`${endDate}T23:59:59.999`);
             }
         }
 
-        const logs = await Log.find(query).sort({ createdAt: -1 });
+        const logs = await Log.find(query)
+            .populate('entity', 'name')
+            .sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,
@@ -689,94 +753,192 @@ const downloadEmployeeTemplate = async (req, res, next) => {
     }
 };
 
-// @desc    Upload employees via CSV
-// @route   POST /api/admin/upload-employees
+// @desc    Upload & preview employees via CSV (Validates without saving)
+// @route   POST /api/admin/preview-employees-csv
 // @access  Private/Admin
-const uploadEmployees = async (req, res, next) => {
+const previewEmployeesCsv = async (req, res, next) => {
     try {
         if (!req.file) {
             res.status(400);
             return next(new Error('Please upload a file'));
         }
 
-        // Use XLSX to read the file (supports both .xlsx and .csv)
         const workbook = XLSX.readFile(req.file.path);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-
-        // Convert sheet to JSON
-        // format uses headers from first row
         const results = XLSX.utils.sheet_to_json(worksheet);
+
+        try { fs.unlinkSync(req.file.path); } catch (e) { console.error("Error deleting temp file", e); }
+
+        if (results.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No records found in the file",
+                errors: ["File appears to be empty or effectively empty"]
+            });
+        }
+
+        const entities = await Entity.find({}, '_id name entityCode');
+        const categories = await EmployeeCategory.find({}, '_id name code');
+        const impactLevels = await ImpactLevel.find({}, '_id name entity');
+
+        const entityMap = {};
+        entities.forEach(e => {
+            if (e.name) entityMap[e.name.toLowerCase()] = e;
+            if (e.entityCode) entityMap[e.entityCode.toLowerCase()] = e;
+        });
+
+        const categoryMap = {};
+        categories.forEach(c => {
+            if (c.name) categoryMap[c.name.toLowerCase()] = c;
+            if (c.code) categoryMap[c.code.toLowerCase()] = c;
+        });
+
+        const impactLevelMap = {};
+        impactLevels.forEach(il => {
+            if (il.name && il.entity) {
+                let key = `${il.name.toLowerCase()}_${il.entity.toString()}`;
+                impactLevelMap[key] = il;
+            }
+            if (il.name && !impactLevelMap[il.name.toLowerCase()]) {
+                impactLevelMap[il.name.toLowerCase()] = il;
+            }
+        });
+
+        const validationResults = [];
+        let validCount = 0;
+
+        for (let i = 0; i < results.length; i++) {
+            const row = results[i];
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+                normalizedRow[key.trim().toLowerCase().replace(/ /g, '_')] = row[key];
+            });
+
+            const name = normalizedRow.full_name || normalizedRow.name || normalizedRow.employee_name;
+            const email = normalizedRow.email || normalizedRow.email_address;
+            const role = (normalizedRow.role || 'employee').toLowerCase();
+            const entityStr = normalizedRow.entity_name || normalizedRow.entity || normalizedRow.company;
+            const levelStr = normalizedRow.employee_level || normalizedRow.level || normalizedRow.grade;
+            const categoryStr = normalizedRow.category || normalizedRow.emp_category || normalizedRow.employee_category;
+            const status = (normalizedRow.status || 'active').toLowerCase();
+            const entityCodeStr = normalizedRow.entity_code || normalizedRow.code || normalizedRow.entity;
+            const password = normalizedRow.password || 'Welcome@1234';
+
+            const rowErrors = [];
+            const fieldErrors = {};
+
+            if (!name) fieldErrors.name = 'Missing name';
+            if (!email) fieldErrors.email = 'Missing email';
+            if (!entityStr && !entityCodeStr) fieldErrors.entity = 'Missing entity or code';
+
+            if (!email || !name || (!entityStr && !entityCodeStr)) {
+                if (Object.keys(normalizedRow).length > 0) {
+                    rowErrors.push(`Missing required fields (Name, Email, Entity/Entity Code)`);
+                } else {
+                    continue; // Skip completely empty rows
+                }
+            }
+
+            let entityObj = null;
+            if (entityCodeStr) entityObj = entityMap[entityCodeStr.toLowerCase()];
+            if (!entityObj && entityStr) entityObj = entityMap[entityStr.toLowerCase()];
+
+            if (!entityObj && (entityStr || entityCodeStr)) {
+                rowErrors.push(`Entity code/name '${entityCodeStr || entityStr}' not present in system`);
+                fieldErrors.entity = 'Entity not found';
+            }
+
+            let categoryObj = null;
+            if (categoryStr) {
+                categoryObj = categoryMap[categoryStr.toLowerCase()];
+                if (!categoryObj) {
+                    rowErrors.push(`Employee category '${categoryStr}' not present in system`);
+                    fieldErrors.category = 'Category not found';
+                }
+            }
+
+            let levelObj = null;
+            if (levelStr) {
+                if (entityObj) {
+                    let key = `${levelStr.toLowerCase()}_${entityObj._id.toString()}`;
+                    levelObj = impactLevelMap[key] || impactLevelMap[levelStr.toLowerCase()];
+                } else {
+                    levelObj = impactLevelMap[levelStr.toLowerCase()];
+                }
+                if (!levelObj) {
+                    rowErrors.push(`Impact level '${levelStr}' not present in system`);
+                    fieldErrors.level = 'Level not found';
+                }
+            }
+
+            const isValid = rowErrors.length === 0;
+            if (isValid) validCount++;
+
+            validationResults.push({
+                rowNumber: i + 1,
+                originalData: { name, email, role, entityStr, levelStr, categoryStr, status, entityCodeStr, password },
+                parsedData: isValid ? {
+                    name, email, password, role, entityId: entityObj._id, levelId: levelObj?._id || null, status,
+                    entityCode: entityCodeStr || entityObj.entityCode, categoryId: categoryObj?._id || null
+                } : null,
+                errors: rowErrors,
+                fieldErrors: fieldErrors,
+                isValid
+            });
+        }
+
+
+        res.status(200).json({
+            success: true,
+            data: {
+                results: validationResults,
+                stats: { total: validationResults.length, valid: validCount, invalid: validationResults.length - validCount }
+            }
+        });
+
+    } catch (error) {
+        if (req.file && fs.existsSync(req.file.path)) try { fs.unlinkSync(req.file.path); } catch (e) { }
+        next(error);
+    }
+
+};
+
+// @desc    Bulk create employees from validated preview data
+// @route   POST /api/admin/bulk-upload-employees
+// @access  Private/Admin
+const bulkCreateEmployees = async (req, res, next) => {
+    try {
+        const { employees } = req.body;
+        if (!employees || !Array.isArray(employees)) {
+            return res.status(400).json({ success: false, message: 'Invalid employee data' });
+        }
 
         let successCount = 0;
         let errorCount = 0;
         const errors = [];
 
-        // Clean up file immediately after reading
-        try {
-            fs.unlinkSync(req.file.path);
-        } catch (e) {
-            console.error("Error deleting temp file", e);
-        }
-
-        if (results.length === 0) {
-            res.status(200).json({
-                success: true,
-                message: "No records found in the file",
-                errors: ["File appears to be empty or effectively empty"]
-            });
-            return;
-        }
-
-        for (const row of results) {
+        for (const emp of employees) {
             try {
-                // Normalize keys to lower case to handle "Full Name" vs "full_name" vs "Name"
-                const normalizedRow = {};
-                Object.keys(row).forEach(key => {
-                    normalizedRow[key.trim().toLowerCase().replace(/ /g, '_')] = row[key];
-                });
-
-                // Map columns to User model fields
-                // Possible variations based on common template usage
-                const name = normalizedRow.full_name || normalizedRow.name || normalizedRow.employee_name;
-                const email = normalizedRow.email || normalizedRow.email_address;
-                const role = (normalizedRow.role || 'user').toLowerCase();
-                const entity = normalizedRow.entity_name || normalizedRow.entity || normalizedRow.company;
-                const level = normalizedRow.employee_level || normalizedRow.level || normalizedRow.grade;
-                const status = (normalizedRow.status || 'active').toLowerCase();
-                const entity_code = normalizedRow.entity_code || normalizedRow.code;
-                const password = normalizedRow.password || 'Welcome@1234';
-
-                if (!email || !name || !entity) {
-                    errorCount++;
-                    // Only push error if it's not a completely empty row (xlsx sometimes reads empty bottom rows)
-                    if (Object.keys(normalizedRow).length > 0) {
-                        errors.push(`Missing required fields (Name, Email, Entity) for row: ${JSON.stringify(row)}`);
-                    }
-                    continue;
-                }
-
-                // calling authService to register (handles hashing and duplicates)
-                await authService.registerUser(name, email, password, role, entity, level, status, entity_code);
+                await authService.registerUser(
+                    emp.name, emp.email, emp.password, emp.role,
+                    emp.entityId, emp.levelId, emp.status,
+                    emp.entityCode, emp.categoryId, true
+                );
                 successCount++;
-
             } catch (err) {
                 errorCount++;
-                errors.push(`Error processing ${row.email || 'unknown row'}: ${err.message}`);
+                errors.push(`Error creating ${emp.email || 'user'}: ${err.message}`);
             }
         }
 
         res.status(200).json({
             success: true,
-            message: `Processed ${results.length} records. Created: ${successCount}. Failed: ${errorCount}`,
+            message: `Processed ${employees.length} records. Created: ${successCount}. Failed: ${errorCount}`,
             errors: errors.length > 0 ? errors : undefined
         });
 
     } catch (error) {
-        // Try to cleanup if error occurred before unlink
-        if (req.file && fs.existsSync(req.file.path)) {
-            try { fs.unlinkSync(req.file.path); } catch (e) { }
-        }
         next(error);
     }
 };
@@ -792,7 +954,8 @@ export {
     updateEntity,
     deleteEntity,
     downloadEmployeeTemplate,
-    uploadEmployees,
+    previewEmployeesCsv,
+    bulkCreateEmployees,
     getPolicies,
     uploadPolicy,
     getLogs,

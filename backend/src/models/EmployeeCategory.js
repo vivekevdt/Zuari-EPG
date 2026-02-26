@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const entitySchema = new mongoose.Schema(
+const employeeCategorySchema = new mongoose.Schema(
     {
         name: {
             type: String,
@@ -8,20 +8,20 @@ const entitySchema = new mongoose.Schema(
             unique: true,
             trim: true
         },
-        entityCode: {
-            type: String,
+        code: {
+            type: String, // Short name / abbreviation e.g. FTC, PE
             required: true,
             unique: true,
             trim: true,
             uppercase: true
         },
         createdBy: {
-            type: String, // Admin name
-            default: ''
+            type: String,
+            required: true
         }
     },
     { timestamps: true }
 );
 
-export default mongoose.model("Entity", entitySchema);
+export default mongoose.model("EmployeeCategory", employeeCategorySchema);
 

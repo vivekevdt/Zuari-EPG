@@ -15,9 +15,21 @@ const policySchema = new mongoose.Schema(
             type: Date,
             default: Date.now
         },
-        entity: {
-            type: String,
+        entity: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Entity',
             required: true
+        }],
+        impactLevel: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'ImpactLevel'
+        }],
+        empCategory: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'EmployeeCategory'
+        }],
+        description: {
+            type: String
         },
         category: {
             type: String, // e.g. 'HR - General', 'HR - Compensation'

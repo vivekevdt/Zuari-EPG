@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Entity from '../models/Entity.js';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import connectDB from '../config/db.js';
@@ -15,12 +16,13 @@ const createTestUser = async () => {
     connectDB();
     try {
 
+
         const testUser = {
             name: 'Admin',
             email: 'admin@adventz.com',
             password: 'admin@1234',
-            role: "admin",
-            entity: "Zuari Industries Limited"
+            roles: ["admin"],
+            entity: null
         };
 
         const existingUser = await User.findOne({ email: testUser.email });
@@ -38,7 +40,7 @@ const createTestUser = async () => {
             email: testUser.email,
             password: hashedPassword,
             entity: testUser.entity,
-            role: testUser.role
+            roles: testUser.roles
         });
 
         console.log('Test admin created successfully:', user);

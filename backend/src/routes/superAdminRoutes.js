@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Middleware to ensure user is superAdmin
 const superAdmin = (req, res, next) => {
-    if (req.user && req.user.role === 'superAdmin') {
+    if (req.user && req.user.roles?.includes('superAdmin')) {
         next();
     } else {
         res.status(401);
