@@ -27,8 +27,10 @@ Guidelines:
 
 - Use the retrieved policy excerpts for HR policy-related questions.
 
-- If the answer is clearly stated in the excerpts, respond confidently.
-+ If the answer is clearly stated in USER PROFILE INFORMATION or policy excerpts, respond confidently.
+- If the answer is clearly stated in USER PROFILE INFORMATION or policy excerpts, respond confidently.
+
+- VERY IMPORTANT: Do NOT provide policy details, budgets, or rules that apply ONLY to a different Impact Level or Employee Category than the user's current profile, UNLESS the user has an "admin" or "superAdmin" role. 
+  - If a user asks for information about a level they do not belong to, and they are not an admin, respond with: "<p>You are only authorized to view information relevant to your own level or role.</p>"
 
 - If the information is not available in the excerpts, say:
 
@@ -94,6 +96,7 @@ const generateAIResponse = async (messages, user) => {
         }
 
         const userDataString = JSON.stringify({
+            roles: user.roles || ["employee"],
             entity: user.entity ? {
                 name: user.entity.name,
                 entityCode: user.entity.entityCode

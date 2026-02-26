@@ -662,6 +662,7 @@ const AdminPolicies = () => {
                                     <th className="text-center py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chunked</th>
                                     <th className="text-center py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Published</th>
                                     <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date Uploaded</th>
+                                    <th className="text-left py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Expiry Date</th>
                                     <th className="text-right py-4 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -786,6 +787,23 @@ const AdminPolicies = () => {
                                             <div className="text-sm font-semibold text-gray-600 dark:text-gray-400">
                                                 {new Date(policy.uploadDate).toLocaleDateString()}
                                             </div>
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            {(() => {
+                                                if (!policy.expiryDate) {
+                                                    return <div className="text-sm font-semibold text-gray-600 dark:text-gray-400">No Expiry</div>;
+                                                }
+                                                const expDate = new Date(policy.expiryDate);
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+
+                                                const isExpired = expDate <= today;
+                                                return (
+                                                    <div className={`text-sm font-semibold ${isExpired ? 'text-red-500 font-bold' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                        {expDate.toLocaleDateString()}
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="py-4 px-4 text-right">
                                             <div className="relative flex justify-end">

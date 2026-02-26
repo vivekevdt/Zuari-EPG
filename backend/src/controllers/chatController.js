@@ -188,16 +188,19 @@ const getAvailablePolicies = async (req, res, next) => {
                         { empCategory: { $exists: false } },
                         { empCategory: user.empCategory }
                     ]
-                },
-                {
-                    $or: [
-                        { impactLevel: { $size: 0 } },
-                        { impactLevel: { $exists: false } },
-                        { impactLevel: user.level }
-                    ]
                 }
             ]
         };
+
+        if (user.level) {
+            query.$and.push({
+                $or: [
+                    { impactLevel: { $size: 0 } },
+                    { impactLevel: { $exists: false } },
+                    { impactLevel: user.level }
+                ]
+            });
+        }
 
         const policies = await Policy.find(query)
             .select('-chunks -versions') // Exclude heavy chunks and versions
