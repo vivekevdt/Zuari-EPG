@@ -114,7 +114,6 @@ const generateAIResponse = async (messages, user) => {
             .replace("{POLICY_TEXT}", policyText)
             .replace("{USER_DATA}", userDataString);
 
-        console.log(systemContent)
         // 3. Prepare messages for Gemini
         // Convert to Gemini format: { role: 'user' | 'model', parts: [{ text: '...' }] }
         // Input `messages` is [newest, ..., oldest]

@@ -24,7 +24,6 @@ for (const p of policies) {
         console.error(`❌ FAILED to load text for ${p.name}`);
         continue;
     }
-    console.log(`Loaded ${text.length} chars for ${p.name}`);
 
     // const chunks = chunkText(text);
     const chunks = await generateChunks(text);
