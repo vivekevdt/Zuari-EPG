@@ -34,6 +34,18 @@
     --input-bg: rgba(30, 41, 59, 0.8);
   }
 
+  html {
+    font-size: 90%;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: var(--bg-main);
