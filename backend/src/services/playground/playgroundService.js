@@ -132,7 +132,7 @@ export const getPlaygroundResponse = async (userId, question, entityName, availa
 
         // 4. Execute Search
         const results = await searchBuilder
-            .limit(5)
+            .limit(100)
             .toArray();
 
         // 5. Construct Context for AI
