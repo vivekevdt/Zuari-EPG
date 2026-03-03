@@ -2,7 +2,7 @@ import { table } from "../db/lancedb.js";
 
 import embed from "../utils/embeddings.js";
 
-export async function searchPolicy(question, user, topK = 4) {
+export async function searchPolicy(question, user, topK = 100) {
 
 
     const [queryVector] = await embed([question]);

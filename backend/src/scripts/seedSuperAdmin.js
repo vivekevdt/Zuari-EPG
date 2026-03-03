@@ -14,8 +14,6 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 const createTestUser = async () => {
     connectDB();
     try {
-
-
         const testUser = {
             name: 'Super Admin',
             email: 'superadmin@adventz.com',
