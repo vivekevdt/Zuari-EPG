@@ -676,7 +676,7 @@ const AdminPolicies = () => {
                                                     {policy.filename.endsWith('.pdf') ? 'PDF' : 'DOC'}
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-gray-800 dark:text-main text-sm">{policy.title}</div>
+                                                    <div className="font-bold text-gray-800 dark:text-white text-sm">{policy.title}</div>
                                                 </div>
                                             </div>
                                         </td>
