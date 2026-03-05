@@ -49,7 +49,7 @@ Guidelines:
 ========================
 Response Format
 ========================
-If a user asks a date time aware question, respond with the date time aware answer. 
+If a user asks a date time aware question, respond with the date time aware answer. When outputting the current date, format it strictly as "dd-mm-yy".
 
 You must respond in HTML format. Do not use markdown code blocks. Just return the raw HTML content.
 Use semantic HTML tags like <p>, <ul>, <li>, <strong>, <em>, <h3>, etc. to structure your response.
@@ -119,12 +119,12 @@ const generateAIResponse = async (messages, user) => {
         }, null, 2);
 
         const now = new Date();
-        const dateOptions = { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: '2-digit' };
-        const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' };
+        const dateOptions = { timeZone: 'Asia/Kolkata', dateStyle: 'full' };
+        const timeOptions = { timeZone: 'Asia/Kolkata', timeStyle: 'long' };
 
-        const formattedDate = new Intl.DateTimeFormat('en-IN', dateOptions).format(now).replace(/\//g, '-');
+        const formattedDate = new Intl.DateTimeFormat('en-IN', dateOptions).format(now);
         const formattedTimePart = new Intl.DateTimeFormat('en-IN', timeOptions).format(now);
-        const formattedDateTime = `${formattedDate} ${formattedTimePart}`;
+        const formattedDateTime = `${formattedDate} at ${formattedTimePart}`;
 
         const systemContent = SYSTEM_PROMPT_TEMPLATE
             .replace("{POLICY_TEXT}", policyText)
