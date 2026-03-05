@@ -14,6 +14,12 @@ USER PROFILE INFORMATION
 {USER_DATA}
 
 ========================
+CURRENT SYSTEM TIME
+========================
+
+{CURRENT_TIME}
+
+========================
 RETRIEVED POLICY EXCERPTS
 ========================
 
@@ -30,11 +36,11 @@ Guidelines:
 - If the answer is clearly stated in USER PROFILE INFORMATION or policy excerpts, respond confidently.
 
 - VERY IMPORTANT: Do NOT provide policy details, budgets, or rules that apply ONLY to a different Impact Level or Employee Category than the user's current profile, UNLESS the user has an "admin" or "superAdmin" role. 
-  - If a user asks for information about a level they do not belong to, and they are not an admin, respond with: "<p>You are only authorized to view information relevant to your own level or role.</p>"
+  - If a user asks for information about a level, role, or category they do not belong to, and they are not an admin, respond with: "<p>This policy is not available for your employee profile. You are only authorized to view information relevant to your own level or role.</p>"
 
-- If the information is not available in the excerpts, say:
+- If the information is completely missing from the excerpts and not related to another role, say:
 
-"<p>This is not covered in the current HR policy. Please contact HR.</p>"
+"<p>This is not covered in the current HR policy, or the policy is not available for your employee profile. Please contact HR.</p>"
 
 - Do not invent policies or add external HR knowledge.
 - Keep responses clear, professional, and easy to understand.
@@ -43,6 +49,7 @@ Guidelines:
 ========================
 Response Format
 ========================
+If a user asks a date time aware question, respond with the date time aware answer. 
 
 You must respond in HTML format. Do not use markdown code blocks. Just return the raw HTML content.
 Use semantic HTML tags like <p>, <ul>, <li>, <strong>, <em>, <h3>, etc. to structure your response.
@@ -60,6 +67,7 @@ Structure your response as follows:
     </div>
 
 </div>
+   
 `;
 
 
@@ -112,7 +120,8 @@ const generateAIResponse = async (messages, user) => {
 
         const systemContent = SYSTEM_PROMPT_TEMPLATE
             .replace("{POLICY_TEXT}", policyText)
-            .replace("{USER_DATA}", userDataString);
+            .replace("{USER_DATA}", userDataString)
+            .replace("{CURRENT_TIME}", new Date().toLocaleString('en-IN', { timeZoneName: 'short' }));
 
         // 3. Prepare messages for Gemini
         // Convert to Gemini format: { role: 'user' | 'model', parts: [{ text: '...' }] }
