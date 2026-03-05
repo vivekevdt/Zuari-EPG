@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 
 
 
@@ -15,9 +15,12 @@ const Sidebar = ({
     toggleSidebar,
     onOpenCalendar,
     toggleDarkMode,
-    policies = []
+    policies = [],
+    selectedPolicyTitle,
+    onSelectPolicy,
+    onOpenPoliciesModal
 }) => {
-
+    const [isPoliciesModalOpen, setIsPoliciesModalOpen] = useState(false);
 
     return (
         <aside
@@ -81,27 +84,42 @@ const Sidebar = ({
 
                 {/* Available Policies Section */}
                 <div className="space-y-1 mt-6">
-                    <h4 className="px-3 text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-[0.2em] mb-3">Available Policies</h4>
+                    <div className="flex items-center justify-between px-3 mb-3">
+                        <h4 className="text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-[0.2em]">Available Policies</h4>
+                        <button
+                            onClick={onOpenPoliciesModal}
+                            className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-800/60 text-blue-600 dark:text-blue-400 p-1 rounded-md transition-colors"
+                            title="View Policy Information"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </button>
+                    </div>
                     <div className="space-y-1.5 px-2 pb-6">
                         {policies.length === 0 ? (
                             <div className="text-[11px] text-gray-500 dark:text-gray-400 italic px-1">No assigned policies found</div>
                         ) : (
-                            policies.map(policy => (
-                                <div
-                                    key={policy._id || policy.id}
-                                    className="flex flex-col p-2 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 dark:hover:bg-slate-800 dark:hover:shadow-black/20 transition-all duration-300 group cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                                >
-                                    <div className="flex items-start gap-2.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                        <svg className="w-4 h-4 shrink-0 text-blue-500 mt-[1px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                                        <span className="text-[13px] font-semibold leading-snug break-words line-clamp-2 group-hover:line-clamp-none">{policy.title}</span>
-                                    </div>
-                                    <div className="overflow-hidden max-h-0 group-hover:max-h-40 transition-all duration-300 pl-[26px]">
-                                        <div className="mt-2 p-2.5 bg-blue-50 dark:bg-slate-900 border border-blue-100 dark:border-slate-700 rounded-lg text-[11px] text-gray-600 dark:text-gray-400 italic shadow-inner">
-                                            {policy.description || 'No additional details available.'}
+                            policies.map(policy => {
+                                const isSelected = selectedPolicyTitle === policy.title;
+                                return (
+                                    <label
+                                        key={policy._id || policy.id}
+                                        className={`flex flex-col p-2.5 rounded-xl transition-all duration-300 group cursor-pointer border 
+                                            ${isSelected ? 'bg-blue-50/80 dark:bg-slate-800 border-blue-200 dark:border-blue-700/50 shadow-sm text-blue-800 dark:text-blue-100' : 'text-gray-700 dark:text-gray-200 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 dark:hover:bg-slate-800 dark:hover:shadow-black/20 border-transparent hover:border-slate-200 dark:hover:border-slate-700'}`}
+                                    >
+                                        <div className={`flex items-start gap-3 transition-colors ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>
+                                            <input
+                                                type="radio"
+                                                name="selectedPolicy"
+                                                value={policy.title}
+                                                checked={isSelected}
+                                                onChange={() => onSelectPolicy(policy.title)}
+                                                className="mt-[3px] shrink-0 w-3.5 h-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
+                                            />
+                                            <span className="text-[13px] font-semibold leading-snug break-words line-clamp-2">{policy.title}</span>
                                         </div>
-                                    </div>
-                                </div>
-                            ))
+                                    </label>
+                                );
+                            })
                         )}
                     </div>
                 </div>
@@ -121,8 +139,6 @@ const Sidebar = ({
                     <svg id="moonIcon" className="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
                 </button>
             </div>
-
-
         </aside>
     );
 };

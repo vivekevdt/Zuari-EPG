@@ -120,12 +120,12 @@ export const createConversation = async (title) => {
     }
 };
 
-export const sendMessage = async (conversationId, content) => {
+export const sendMessage = async (conversationId, content, selectedPolicy = null) => {
     try {
         const response = await fetch(`${API_URL}/api/chat/message`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ conversationId, content }),
+            body: JSON.stringify({ conversationId, content, selectedPolicy }),
         });
         const data = await response.json();
         if (!response.ok) {

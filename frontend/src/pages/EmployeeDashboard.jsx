@@ -23,9 +23,11 @@ const EmployeeDashboard = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isPoliciesModalOpen, setIsPoliciesModalOpen] = useState(false);
     const [availablePolicies, setAvailablePolicies] = useState([]);
     const [dynamicFaqs, setDynamicFaqs] = useState([]);
     const [isFaqLoading, setIsFaqLoading] = useState(true);
+    const [selectedPolicyTitle, setSelectedPolicyTitle] = useState(null);
 
     useEffect(() => {
         // Apply dashboard-specific body classes on mount
@@ -56,15 +58,8 @@ const EmployeeDashboard = () => {
                 setAvailablePolicies(policiesData);
 
                 if (policiesData && policiesData.length > 0) {
-                    const policyTitles = policiesData.map(p => p.title);
-                    try {
-                        const faqs = await getDynamicFAQs(policyTitles);
-                        setDynamicFaqs(faqs);
-                    } catch (faqError) {
-                        console.error("Failed to load dynamic FAQs:", faqError);
-                    } finally {
-                        setIsFaqLoading(false);
-                    }
+                    const firstPolicy = policiesData[0].title;
+                    setSelectedPolicyTitle(firstPolicy);
                 } else {
                     setIsFaqLoading(false);
                 }
@@ -75,6 +70,22 @@ const EmployeeDashboard = () => {
         };
         fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        const fetchFaqs = async () => {
+            if (!selectedPolicyTitle) return;
+            setIsFaqLoading(true);
+            try {
+                const faqs = await getDynamicFAQs([selectedPolicyTitle]);
+                setDynamicFaqs(faqs);
+            } catch (faqError) {
+                console.error("Failed to load dynamic FAQs:", faqError);
+            } finally {
+                setIsFaqLoading(false);
+            }
+        };
+        fetchFaqs();
+    }, [selectedPolicyTitle]);
 
     useEffect(() => {
         if (!activeSessionId) {
@@ -120,7 +131,7 @@ const EmployeeDashboard = () => {
         setIsLoading(true);
 
         try {
-            const response = await sendMessage(sessionId, content);
+            const response = await sendMessage(sessionId, content, selectedPolicyTitle);
             const { botMessage } = response;
             setMessages(prev => [...prev, botMessage]);
         } catch (error) {
@@ -198,6 +209,9 @@ const EmployeeDashboard = () => {
                 onOpenCalendar={() => { setIsCalendarOpen(true); setIsSidebarOpen(false); }}
                 toggleDarkMode={toggleDarkMode}
                 policies={availablePolicies}
+                selectedPolicyTitle={selectedPolicyTitle}
+                onSelectPolicy={setSelectedPolicyTitle}
+                onOpenPoliciesModal={() => setIsPoliciesModalOpen(true)}
             />
 
             <ChatArea
@@ -209,9 +223,54 @@ const EmployeeDashboard = () => {
                 toggleDarkMode={toggleDarkMode}
                 dynamicFaqs={dynamicFaqs}
                 isFaqLoading={isFaqLoading}
+                selectedPolicyTitle={selectedPolicyTitle}
+                setSelectedPolicyTitle={setSelectedPolicyTitle}
+                availablePolicies={availablePolicies}
             />
 
             <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} />
+
+            {/* Policies Information Modal */}
+            {isPoliciesModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-slate-800/50">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Policy Information
+                            </h2>
+                            <button
+                                onClick={() => setIsPoliciesModalOpen(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                            {availablePolicies.length === 0 ? (
+                                <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                                    No policies are available for your profile.
+                                </div>
+                            ) : (
+                                availablePolicies.map((policy) => (
+                                    <div key={policy._id || policy.id} className="bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl p-5 hover:border-blue-200 dark:hover:border-blue-900/50 transition-colors shadow-sm">
+                                        <h3 className="text-[16px] font-bold text-gray-900 dark:text-blue-100 mb-2 flex items-start gap-2">
+                                            <svg className="w-5 h-5 shrink-0 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            {policy.title}
+                                        </h3>
+                                        <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed pl-7">
+                                            {policy.description || 'No detailed description provided for this policy.'}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

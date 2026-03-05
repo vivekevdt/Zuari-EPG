@@ -2,7 +2,11 @@
 import React, { useRef, useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 
-const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, toggleDarkMode, dynamicFaqs, isFaqLoading }) => {
+const ChatArea = ({
+    messages, isLoading, onSendMessage, user, toggleSidebar,
+    toggleDarkMode, dynamicFaqs, isFaqLoading,
+    selectedPolicyTitle, setSelectedPolicyTitle, availablePolicies
+}) => {
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
 
@@ -27,7 +31,7 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
         onSendMessage(text);
     };
 
-    const displayFaqs = dynamicFaqs?.length > 0 ? dynamicFaqs.slice(0, 4) : [];
+    const displayFaqs = dynamicFaqs?.length > 0 ? dynamicFaqs.slice(0, 8) : [];
 
     const faqStyles = [
         {
@@ -65,6 +69,11 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                     Hello, <span className="text-blue-600">{user?.name?.split(' ')[0] || 'Employee'}</span>.
                 </h2>
                 <p className="text-gray-400 font-medium text-lg max-w-xl">How can I assist you with company policies today?</p>
+
+                <div className="mt-6 inline-flex items-center gap-2 bg-blue-50/80 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-4 py-2.5 rounded-xl text-sm font-semibold border border-blue-100 dark:border-blue-800/30 shadow-sm">
+                    <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+                    <span>Please choose a policy from the left sidebar to chat with!</span>
+                </div>
             </div>
         </div>
     );
@@ -133,8 +142,8 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                     {messages.length === 0 && (
                         <div className="mb-4">
                             {isFaqLoading ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {[1, 2, 3, 4].map(i => (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                                         <div key={i} className="animate-pulse bg-gray-100 dark:bg-slate-800/60 rounded-xl p-4 flex items-center gap-3 border border-transparent">
                                             <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-slate-700 shrink-0"></div>
                                             <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded-md w-3/4"></div>
@@ -143,17 +152,17 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                                 </div>
                             ) : (
                                 displayFaqs.length > 0 && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                         {displayFaqs.map((faq, index) => {
                                             const style = faqStyles[index % faqStyles.length];
                                             return (
-                                                <button key={index} onClick={() => handleSuggestion(faq.question)} className="flex items-center text-left p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:border-blue-100 dark:hover:border-slate-700 transition-all group backdrop-blur-sm">
+                                                <button key={index} onClick={() => handleSuggestion(faq.question)} className="relative flex items-center text-left p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:border-blue-100 dark:hover:border-slate-700 transition-all group backdrop-blur-sm">
                                                     <div className={`p-2 rounded-lg shrink-0 ${style.bg} group-hover:scale-110 transition-transform`}>
                                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             {style.icon}
                                                         </svg>
                                                     </div>
-                                                    <span className="font-semibold text-[13px] text-[var(--text-main)] ml-3 leading-snug truncate">{faq.question}</span>
+                                                    <span className="font-semibold text-[13px] text-[var(--text-main)] ml-3 leading-snug ">{faq.question}</span>
                                                 </button>
                                             );
                                         })}

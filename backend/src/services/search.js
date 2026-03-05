@@ -2,16 +2,16 @@ import { table } from "../db/lancedb.js";
 
 import embed from "../utils/embeddings.js";
 
-export async function searchPolicy(question, user, topK = 100) {
+export async function searchPolicy(question, user, selectedPolicy = null, topK = 100) {
 
 
     const [queryVector] = await embed([question]);
 
     let searchBuilder = table.search(queryVector);
 
-    if (user) {
-        let conditions = [];
+    let conditions = [];
 
+    if (user) {
         // 1. Entity Filter
         if (user.entity) {
             const entityId = user.entity._id ? String(user.entity._id) : String(user.entity);
@@ -32,12 +32,17 @@ export async function searchPolicy(question, user, topK = 100) {
             const safeCategory = empCatId.replace(/'/g, "\\'");
             conditions.push(`empCategory LIKE '%${safeCategory}%'`);
         }
+    }
 
-        // Combine all conditions with AND
-        if (conditions.length > 0) {
-            const whereClause = conditions.join(" AND ");
-            searchBuilder = searchBuilder.where(whereClause);
-        }
+    if (selectedPolicy) {
+        const safePolicy = selectedPolicy.replace(/'/g, "\\'");
+        conditions.push(`policy = '${safePolicy}'`);
+    }
+
+    // Combine all conditions with AND
+    if (conditions.length > 0) {
+        const whereClause = conditions.join(" AND ");
+        searchBuilder = searchBuilder.where(whereClause);
     }
 
     const results = await searchBuilder
