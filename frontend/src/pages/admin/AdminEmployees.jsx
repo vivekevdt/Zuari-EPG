@@ -57,6 +57,7 @@ const AdminEmployees = () => {
         impactLevel: '',      // impact level _id
         empCategory: '',      // employee category _id
         status: 'active',
+        gender: 'Male',
         roles: ['employee'],
     };
 
@@ -154,6 +155,7 @@ const AdminEmployees = () => {
                 level: formData.impactLevel,       // send impact level id as "level"
                 empCategory: formData.empCategory,
                 status: formData.status,
+                gender: formData.gender,
             };
 
             if (isEditing) {
@@ -204,6 +206,7 @@ const AdminEmployees = () => {
             impactLevel: levelId,
             empCategory: catId,
             status: userItem.status || 'active',
+            gender: userItem.gender || 'Male',
             roles: userItem.roles || ['employee'],
         });
         setEditId(userItem._id);
@@ -386,7 +389,16 @@ const AdminEmployees = () => {
                                         </SelectField>
                                     </div>
 
-                                    {/* Row 4: Roles */}
+                                    {/* Row 4: Gender + Empty Space (or something else) */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <SelectField label="Gender" name="gender" value={formData.gender} onChange={handleChange}>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </SelectField>
+                                    </div>
+
+                                    {/* Row 5: Roles */}
                                     <div>
                                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Assign Roles</label>
                                         <div className="flex flex-wrap gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700">
@@ -463,6 +475,7 @@ const AdminEmployees = () => {
                                                     <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Entity</th>
                                                     <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Level</th>
                                                     <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Category</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Gender</th>
                                                     <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Role</th>
                                                     <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
                                                 </tr>
@@ -500,6 +513,9 @@ const AdminEmployees = () => {
                                                                 <div>{row.originalData.categoryStr || '—'}</div>
                                                                 {row.fieldErrors?.category && <div className="text-[10px] font-bold text-red-600 dark:text-red-400 mt-1">{row.fieldErrors.category}</div>}
                                                             </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 align-top">
+                                                            <div className="p-2 text-gray-600 dark:text-gray-400">{row.originalData.genderStr || '—'}</div>
                                                         </td>
                                                         <td className="px-4 py-3 align-top">
                                                             <div className="p-2 text-gray-600 dark:text-gray-400 capitalize">{row.originalData.role || '—'}</div>
@@ -604,6 +620,7 @@ const AdminEmployees = () => {
                                     <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Entity</th>
                                     <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Impact Level</th>
                                     <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Category</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Gender</th>
                                     <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                                     <th className="text-left py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Created</th>
                                     <th className="text-right py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
@@ -670,6 +687,13 @@ const AdminEmployees = () => {
                                             <td className="py-4 px-4">
                                                 <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
                                                     {catObj?.name ? `${catObj.name} (${catObj.code})` : '—'}
+                                                </span>
+                                            </td>
+
+                                            {/* Gender */}
+                                            <td className="py-4 px-4">
+                                                <span className="font-medium text-gray-600 dark:text-gray-300 text-sm">
+                                                    {userItem.gender || '—'}
                                                 </span>
                                             </td>
 

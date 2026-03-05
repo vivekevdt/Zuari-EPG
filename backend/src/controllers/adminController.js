@@ -881,6 +881,7 @@ const previewEmployeesCsv = async (req, res, next) => {
             const status = (normalizedRow.status || 'active').toLowerCase();
             const entityCodeStr = normalizedRow.entity_code || normalizedRow.code || normalizedRow.entity;
             const password = normalizedRow.password || 'Welcome@1234';
+            const genderStr = normalizedRow.gender || 'Male';
 
             const rowErrors = [];
             const fieldErrors = {};
@@ -934,10 +935,10 @@ const previewEmployeesCsv = async (req, res, next) => {
 
             validationResults.push({
                 rowNumber: i + 1,
-                originalData: { name, email, role, entityStr, levelStr, categoryStr, status, entityCodeStr, password },
+                originalData: { name, email, role, entityStr, levelStr, categoryStr, status, entityCodeStr, password, genderStr },
                 parsedData: isValid ? {
                     name, email, password, role, entityId: entityObj._id, levelId: levelObj?._id || null, status,
-                    entityCode: entityCodeStr || entityObj.entityCode, categoryId: categoryObj?._id || null
+                    entityCode: entityCodeStr || entityObj.entityCode, categoryId: categoryObj?._id || null, gender: genderStr
                 } : null,
                 errors: rowErrors,
                 fieldErrors: fieldErrors,
@@ -980,7 +981,7 @@ const bulkCreateEmployees = async (req, res, next) => {
                 await authService.registerUser(
                     emp.name, emp.email, emp.password, emp.role,
                     emp.entityId, emp.levelId, emp.status,
-                    emp.entityCode, emp.categoryId, true
+                    emp.entityCode, emp.categoryId, true, emp.gender
                 );
                 successCount++;
             } catch (err) {

@@ -1,6 +1,7 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
+import manImg from '../assets/man.png';
+import womanImg from '../assets/woman.png';
 
 const ChatArea = ({
     messages, isLoading, onSendMessage, user, toggleSidebar,
@@ -94,11 +95,17 @@ const ChatArea = ({
                     <div className="max-w-6xl mx-auto px-3 md:px-6 space-y-6 md:space-y-8 pb-4 w-full">
                         {messages.map((msg) => (
                             <div key={msg._id || msg.id} className={`flex gap-3 md:gap-6 animate-up ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`w-8 h-8 rounded-lg ${msg.role === 'ai' || msg.role === 'assistant' ? 'bg-zuari-navy shadow-lg' : 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm'} shrink-0 flex items-center justify-center`}>
+                                <div className={`w-8 h-8 rounded-lg ${msg.role === 'ai' || msg.role === 'assistant' ? 'bg-zuari-navy shadow-lg' : (user?.gender === 'Female' || user?.gender === 'Male' ? '' : 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm')} shrink-0 flex items-center justify-center`}>
                                     {msg.role === 'ai' || msg.role === 'assistant' ? (
                                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                     ) : (
-                                        <span className="text-[9px] font-black text-gray-400">YOU</span>
+                                        user?.gender === 'Female' ? (
+                                            <img src={womanImg} alt="User Avatar" className="w-full h-full object-cover rounded-lg" />
+                                        ) : user?.gender === 'Male' ? (
+                                            <img src={manImg} alt="User Avatar" className="w-full h-full object-cover rounded-lg" />
+                                        ) : (
+                                            <span className="text-[9px] font-black text-gray-400">YOU</span>
+                                        )
                                     )}
                                 </div>
                                 <div className="space-y-4 pt-1 max-w-[calc(100%-3rem)] md:max-w-[85%] min-w-0">
