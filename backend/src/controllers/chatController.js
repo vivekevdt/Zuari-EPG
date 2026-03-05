@@ -74,7 +74,7 @@ const getMessages = async (req, res, next) => {
 // @access  Private
 const sendMessage = async (req, res, next) => {
     try {
-        const { conversationId, content } = req.body;
+        const { conversationId, content, selectedPolicy } = req.body;
 
         if (!conversationId || !content) {
             res.status(400);
@@ -107,9 +107,42 @@ const sendMessage = async (req, res, next) => {
         // 2. Fetch recent context
         const recentMessages = await chatService.getRecentMessages(conversation._id);
 
+        // 2.5 Fetch available policies
+        const query = {
+            status: 'live',
+            $and: [
+                {
+                    $or: [
+                        { entity: { $size: 0 } },
+                        { entity: { $exists: false } },
+                        { entity: req.user.entity }
+                    ]
+                },
+                {
+                    $or: [
+                        { empCategory: { $size: 0 } },
+                        { empCategory: { $exists: false } },
+                        { empCategory: req.user.empCategory }
+                    ]
+                }
+            ]
+        };
+
+        if (req.user.level) {
+            query.$and.push({
+                $or: [
+                    { impactLevel: { $size: 0 } },
+                    { impactLevel: { $exists: false } },
+                    { impactLevel: req.user.level }
+                ]
+            });
+        }
+        const availablePoliciesDocs = await Policy.find(query).select('title').sort({ title: 1 });
+        const availablePoliciesList = availablePoliciesDocs.map(p => p.title);
+
         // 3. Generate Bot Response
         const populatedUser = await req.user.populate(['entity', 'level', 'empCategory']);
-        const botContent = await aiService.generateAIResponse(recentMessages, populatedUser);
+        const botContent = await aiService.generateAIResponse(recentMessages, populatedUser, selectedPolicy, availablePoliciesList);
 
         // 4. Save Bot Message
         const botMessage = await chatService.saveMessage(conversation._id, req.user._id, 'ai', botContent);

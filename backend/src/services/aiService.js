@@ -20,6 +20,14 @@ CURRENT SYSTEM TIME
 {CURRENT_TIME}
 
 ========================
+AVAILABLE POLICIES FOR USER
+========================
+
+Total Available: {TOTAL_POLICIES}
+
+{AVAILABLE_POLICIES}
+
+========================
 RETRIEVED POLICY EXCERPTS
 ========================
 
@@ -37,6 +45,9 @@ Guidelines:
 
 - VERY IMPORTANT: Do NOT provide policy details, budgets, or rules that apply ONLY to a different Impact Level or Employee Category than the user's current profile, UNLESS the user has an "admin" or "superAdmin" role. 
   - If a user asks for information about a level, role, or category they do not belong to, and they are not an admin, respond with: "<p>This policy is not available for your employee profile. You are only authorized to view information relevant to your own level or role.</p>"
+
+- If user ask question if it does not match with policy retrived exertpts and it belongs to the available polices  show it you have not choose policy according to your question
+Please choose from the available polices
 
 - If the information is completely missing from the excerpts and not related to another role, say:
 
@@ -74,7 +85,7 @@ Structure your response as follows:
 
 
 
-const generateAIResponse = async (messages, user) => {
+const generateAIResponse = async (messages, user, selectedPolicy = null, availablePoliciesList = []) => {
     try {
         if (!config.GEMINI_API_KEY) {
             return "Server Error: Gemini API Key not configured.";
@@ -88,7 +99,7 @@ const generateAIResponse = async (messages, user) => {
         let policyText = "No relevant policies found.";
         if (query) {
             try {
-                const searchResults = await searchPolicy(query, user);
+                const searchResults = await searchPolicy(query, user, selectedPolicy);
                 if (searchResults && searchResults.length > 0) {
 
                     policyText = searchResults.map(r =>
@@ -126,10 +137,16 @@ const generateAIResponse = async (messages, user) => {
         const formattedTimePart = new Intl.DateTimeFormat('en-IN', timeOptions).format(now);
         const formattedDateTime = `${formattedDate} at ${formattedTimePart}`;
 
+        const availablePoliciesStr = availablePoliciesList.length > 0
+            ? availablePoliciesList.map(p => `- ${p}`).join('\n')
+            : "No policies available.";
+
         const systemContent = SYSTEM_PROMPT_TEMPLATE
             .replace("{POLICY_TEXT}", policyText)
             .replace("{USER_DATA}", userDataString)
-            .replace("{CURRENT_TIME}", formattedDateTime);
+            .replace("{CURRENT_TIME}", formattedDateTime)
+            .replace("{AVAILABLE_POLICIES}", availablePoliciesStr)
+            .replace("{TOTAL_POLICIES}", availablePoliciesList.length.toString());
 
         // 3. Prepare messages for Gemini
         // Convert to Gemini format: { role: 'user' | 'model', parts: [{ text: '...' }] }
@@ -195,7 +212,7 @@ const generateDynamicFAQs = async (policyNames) => {
 You are an HR Policy Assistant. Based on the following available HR policies for the employee:
 [${policyNames.join(", ")}]
 
-Generate exactly 4 distinct Frequently Asked Questions (FAQs) that the employee might ask regarding these specific policies. 
+Generate exactly 8 distinct Frequently Asked Questions (FAQs) that the employee might ask regarding these specific policies. 
 Ask simple questino of one sentence.
 dont include overtime question
 For each FAQ, provide the question. Do not include any greeting or explanation.
