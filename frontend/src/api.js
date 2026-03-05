@@ -485,6 +485,22 @@ export const chunkPolicy = async (id) => {
     }
 };
 
+export const generatePolicyFaqs = async (id) => {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/policies/${id}/faqs/generate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to generate FAQs');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const deletePolicy = async (id) => {
     try {
         const response = await fetch(`${API_URL}/api/admin/policies/${id}`, {

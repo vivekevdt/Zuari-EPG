@@ -13,6 +13,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authService from '../services/authService.js';
+import FAQ from '../models/FAQ.js';
+import aiService from '../services/aiService.js';
 
 
 // @desc    Get Admin Dashboard Statistics
@@ -460,7 +462,18 @@ const uploadPolicy = async (req, res, next) => {
             description: description || '',
             category: category || 'General',
             expiryDate: expiryDate || null,
-            status: 'draft' // Default status changed to draft to match UI
+            status: 'draft', // Default status changed to draft to match UI
+            hasFaqs: false
+        });
+
+        // Trigger FAQ generation asynchronously without blocking the upload response
+        aiService.generateDynamicFAQs([policy.title]).then(async (faqs) => {
+            if (faqs && faqs.length > 0) {
+                await FAQ.create({ policyId: policy._id, faqs });
+                await Policy.findByIdAndUpdate(policy._id, { hasFaqs: true });
+            }
+        }).catch(err => {
+            console.error("Failed to generate FAQs on upload:", err);
         });
 
         res.status(201).json({
@@ -543,6 +556,9 @@ const deletePolicy = async (req, res, next) => {
         if (policy) {
             // Delete chunks from vector DB
             await deleteChunks(policy.title, policy.entity);
+
+            // Delete FAQs
+            await FAQ.deleteMany({ policyId: req.params.id });
 
             // Delete policy from MongoDB
             await Policy.findByIdAndDelete(req.params.id);
@@ -748,6 +764,36 @@ const getLogs = async (req, res, next) => {
         next(error);
     }
 }
+
+// @desc    Generate FAQs for a policy manually
+// @route   POST /api/admin/policies/:id/faqs/generate
+// @access  Private/Admin
+const generatePolicyFaqs = async (req, res, next) => {
+    try {
+        const policy = await Policy.findById(req.params.id);
+
+        if (!policy) {
+            res.status(404);
+            throw new Error('Policy not found');
+        }
+
+        // Delete any existing FAQs for safety before generating new ones
+        await FAQ.deleteMany({ policyId: policy._id });
+
+        const faqs = await aiService.generateDynamicFAQs([policy.title]);
+        if (faqs && faqs.length > 0) {
+            await FAQ.create({ policyId: policy._id, faqs });
+            policy.hasFaqs = true;
+            await policy.save();
+            res.status(201).json({ success: true, message: 'FAQs generated successfully', data: faqs });
+        } else {
+            res.status(400);
+            throw new Error("Unable to generate FAQs");
+        }
+    } catch (error) {
+        next(error);
+    }
+};
 
 
 // @desc    Download employee CSV template
@@ -974,5 +1020,6 @@ export {
     deletePolicy,
     updatePolicy,
     publishPolicy,
-    getArchivedPolicies
+    getArchivedPolicies,
+    generatePolicyFaqs
 };

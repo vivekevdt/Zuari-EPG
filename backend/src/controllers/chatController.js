@@ -194,6 +194,7 @@ const deleteConversation = async (req, res, next) => {
 };
 
 import Policy from '../models/Policy.js';
+import FAQ from '../models/FAQ.js';
 
 // @desc    Get all available policies for an employee
 // @route   GET /api/chat/policies
@@ -259,8 +260,23 @@ const getDynamicFAQs = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'Policies array is required' });
         }
 
-        const faqs = await aiService.generateDynamicFAQs(policies);
+        // Fetch policies matching the provided titles to get their ObjectIds
+        const matchedPolicies = await Policy.find({ title: { $in: policies } });
+        const policyIds = matchedPolicies.map(p => p._id);
 
+        let faqs = [];
+
+        if (policyIds.length > 0) {
+            // Retrieve generated FAQs from database
+            const faqDocs = await FAQ.find({ policyId: { $in: policyIds } });
+            faqDocs.forEach(faqDoc => {
+                if (faqDoc.faqs && faqDoc.faqs.length > 0) {
+                    faqs = faqs.concat(faqDoc.faqs);
+                }
+            });
+        }
+
+        // If no FAQs found for these policies, we can just return empty or generic
         res.status(200).json({
             statusCode: 200,
             success: true,

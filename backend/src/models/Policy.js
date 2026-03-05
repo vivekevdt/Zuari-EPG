@@ -47,6 +47,10 @@ const policySchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
+        hasFaqs: {
+            type: Boolean,
+            default: false
+        },
         version: {
             type: String, // e.g. '1.0'
             default: '1.0'
