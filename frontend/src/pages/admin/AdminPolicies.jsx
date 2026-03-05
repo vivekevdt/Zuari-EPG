@@ -701,11 +701,11 @@ const AdminPolicies = () => {
                                                                 );
                                                             })}
                                                             {remaining > 0 && (
-                                                                <div className="relative group inline-block mt-1">
+                                                                <div className="relative group/tooltip inline-block mt-1">
                                                                     <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold cursor-help">
                                                                         +{remaining} more
                                                                     </span>
-                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50">
                                                                         <div className="flex flex-col gap-1.5">
                                                                             {ents.map((ent, i) => {
                                                                                 const entityObj = entities.find(e => e._id === ent);
@@ -742,11 +742,11 @@ const AdminPolicies = () => {
                                                                 })}
                                                             </div>
                                                             {remaining > 0 && (
-                                                                <div className="relative group inline-block mt-1">
+                                                                <div className="relative group/tooltip inline-block mt-1">
                                                                     <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold cursor-help">
                                                                         +{remaining} more
                                                                     </span>
-                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50">
                                                                         <div className="grid grid-cols-4 gap-1.5">
                                                                             {policy.impactLevel.map((impactId, i) => {
                                                                                 const impact = impactLevels.find(il => il._id === impactId);
@@ -782,11 +782,11 @@ const AdminPolicies = () => {
                                                                 })}
                                                             </div>
                                                             {remaining > 0 && (
-                                                                <div className="relative group inline-block mt-1">
+                                                                <div className="relative group/tooltip inline-block mt-1">
                                                                     <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-[9px] font-bold cursor-help">
                                                                         +{remaining} more
                                                                     </span>
-                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                                                    <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-max max-w-[200px] bg-gray-900 text-white text-[10px] rounded-lg shadow-xl p-3 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50">
                                                                         <div className="grid grid-cols-4 gap-1.5">
                                                                             {policy.empCategory.map((catId, i) => {
                                                                                 const cat = empCategories.find(c => c._id === catId);
