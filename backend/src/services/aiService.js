@@ -118,10 +118,18 @@ const generateAIResponse = async (messages, user) => {
             } : null
         }, null, 2);
 
+        const now = new Date();
+        const dateOptions = { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: '2-digit' };
+        const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' };
+
+        const formattedDate = new Intl.DateTimeFormat('en-IN', dateOptions).format(now).replace(/\//g, '-');
+        const formattedTimePart = new Intl.DateTimeFormat('en-IN', timeOptions).format(now);
+        const formattedDateTime = `${formattedDate} ${formattedTimePart}`;
+
         const systemContent = SYSTEM_PROMPT_TEMPLATE
             .replace("{POLICY_TEXT}", policyText)
             .replace("{USER_DATA}", userDataString)
-            .replace("{CURRENT_TIME}", new Date().toLocaleString('en-IN', { timeZoneName: 'short' }));
+            .replace("{CURRENT_TIME}", formattedDateTime);
 
         // 3. Prepare messages for Gemini
         // Convert to Gemini format: { role: 'user' | 'model', parts: [{ text: '...' }] }
