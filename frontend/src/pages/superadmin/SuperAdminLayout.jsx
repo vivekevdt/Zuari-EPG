@@ -55,7 +55,7 @@ const SuperAdminLayout = () => {
             )}
 
             {/* Sidebar */}
-            <aside className={`bg-white/70 dark:bg-slate-950 text-slate-800 dark:text-white backdrop-blur-2xl border-r border-gray-100 dark:border-slate-800 flex flex-col transition-all duration-300 shadow-xl z-50 fixed md:relative h-full ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full md:w-20 md:translate-x-0'}`}>
+            <aside className={`bg-zuari-navy dark:bg-slate-950 text-white backdrop-blur-2xl border-r border-blue-800 dark:border-slate-800 flex flex-col transition-all duration-300 shadow-xl z-50 fixed md:relative h-full ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full md:w-20 md:translate-x-0'}`}>
                 <div className="p-6 flex items-center justify-between border-b border-gray-200 dark:border-slate-800">
                     {isSidebarOpen ? (
                         <div className="flex items-center gap-3 px-2">
@@ -63,8 +63,8 @@ const SuperAdminLayout = () => {
                                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                             </div>
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-extrabold tracking-tight text-gray-900 dark:text-white leading-none">AskHR</h1>
-                                <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest">Super Admin</span>
+                                <h1 className="text-lg font-extrabold tracking-tight text-white leading-none">AskHR</h1>
+                                <span className="text-[8px] font-bold text-blue-200 uppercase tracking-widest">Super Admin</span>
                             </div>
                         </div>
                     ) : (
@@ -81,9 +81,9 @@ const SuperAdminLayout = () => {
                         <button
                             key={item.path}
                             onClick={() => navigate(item.path)}
-                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-zuari-navy shadow-md shadow-blue-900/20 text-white' : 'text-slate-500 hover:bg-black/5 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}
+                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-blue-600 shadow-md shadow-blue-900/40 text-white' : 'text-blue-100 hover:bg-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}
                         >
-                            <div className={`${location.pathname === item.path ? 'text-white' : 'text-slate-400 group-hover:text-zuari-navy dark:group-hover:text-white'}`}>
+                            <div className={`${location.pathname === item.path ? 'text-white' : 'text-blue-200 group-hover:text-white dark:text-slate-400 dark:group-hover:text-white'}`}>
                                 {item.icon}
                             </div>
                             {isSidebarOpen && <span className="font-semibold text-sm tracking-wide">{item.label}</span>}
@@ -91,33 +91,33 @@ const SuperAdminLayout = () => {
                     ))}
                 </nav>
 
-                <div className="p-4 bg-blue-50/50 dark:bg-slate-800/30 border-t border-gray-100 dark:border-slate-800 flex items-center gap-3 mt-auto flex-wrap">
+                <div className="p-4 bg-black/10 dark:bg-slate-800/30 border-t border-white/10 dark:border-slate-800 flex items-center gap-3 mt-auto flex-wrap">
 
                     {isSidebarOpen ? (
                         <>
                             <div className="flex-1 overflow-hidden order-1">
                                 <button
                                     onClick={logout}
-                                    className="text-[10px] text-red-500 font-bold uppercase tracking-tighter hover:text-red-700 flex items-center gap-1"
+                                    className="text-sm font-medium text-blue-100 hover:text-white flex items-center gap-2"
                                 >
-                                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                                     Sign Out
                                 </button>
                             </div>
-                            <button onClick={toggleDarkMode} className="p-2 ml-auto rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 transition-all text-gray-500 hover:text-zuari-navy dark:text-gray-400 dark:hover:text-blue-400 cursor-pointer order-2 shadow-sm bg-white dark:bg-slate-800">
+                            <button onClick={toggleDarkMode} className="p-2 ml-auto rounded-lg border border-white/20 dark:border-slate-700 hover:bg-white/20 dark:hover:bg-slate-700 transition-all text-white dark:text-gray-400 cursor-pointer order-2 shadow-md bg-white/10 dark:bg-slate-800 backdrop-blur-sm">
                                 <svg className="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
                                 <svg className="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
                             </button>
                         </>
                     ) : (
                         <div className="flex flex-col gap-4 w-full justify-center items-center">
-                            <button onClick={toggleDarkMode} className="p-2 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 transition-all text-gray-500 hover:text-zuari-navy dark:text-gray-400 dark:hover:text-blue-400 cursor-pointer shadow-sm bg-white dark:bg-slate-800">
+                            <button onClick={toggleDarkMode} className="p-2 rounded-lg border border-white/20 dark:border-slate-700 hover:bg-white/20 dark:hover:bg-slate-700 transition-all text-white dark:text-gray-400 cursor-pointer shadow-md bg-white/10 dark:bg-slate-800 backdrop-blur-sm">
                                 <svg className="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
                                 <svg className="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
                             </button>
                             <button
                                 onClick={logout}
-                                className="text-red-500 hover:text-red-700 flex items-center justify-center p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                                className="text-blue-100 hover:text-white flex items-center justify-center p-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5"
                                 title="Sign Out"
                             >
                                 <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>

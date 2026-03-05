@@ -583,6 +583,8 @@ const updatePolicy = async (req, res, next) => {
         // Capture original values before update
         const oldTitle = policy.title;
         const oldEntity = policy.entity;
+        const oldImpactLevel = policy.impactLevel;
+        const oldEmpCategory = policy.empCategory;
         const currentVersion = policy.version || '1.0';
 
         const { title, category, expiryDate, changeNote, description } = req.body;
@@ -647,16 +649,25 @@ const updatePolicy = async (req, res, next) => {
         // Handle date properly, allowing clearing it if sent as null/empty
         if (expiryDate !== undefined) policy.expiryDate = expiryDate;
 
-        // If title or entity changed, delete old chunks from vector DB
-        // We only check if entity has changed. Assuming oldEntity[0] for deleteChunks if it's an array mismatch.
-        // Or if changed, we just use the first item to delete chunks for now.
-        const entityChanged = newEntity && JSON.stringify(newEntity) !== JSON.stringify(oldEntity);
-        if ((title && title !== oldTitle) || entityChanged) {
-            await deleteChunks(oldTitle, oldEntity[0] || oldEntity);
-            // If policy was live, we should reset status because vector data is now gone/stale
-            if (policy.status === 'live') {
-                policy.status = 'chunked'; // Ready to publish again with new metadata
-            }
+        // If title, entity, impact level or category changed, delete old chunks from vector DB and reset status
+        const titleChanged = title && title !== oldTitle;
+
+        const stringifyIds = (arr) => {
+            if (!arr) return JSON.stringify([]);
+            return JSON.stringify(arr.map(id => id.toString()).sort());
+        };
+
+        const entityChanged = newEntity && stringifyIds(newEntity) !== stringifyIds(oldEntity);
+        const impactLevelChanged = newImpactLevel && stringifyIds(newImpactLevel) !== stringifyIds(oldImpactLevel);
+        const empCategoryChanged = newEmpCategory && stringifyIds(newEmpCategory) !== stringifyIds(oldEmpCategory);
+
+        if (titleChanged || entityChanged || impactLevelChanged || empCategoryChanged) {
+            // we delete by the stringified format that lance expects which corresponds to Array.isArray(entity) ? entity.join(',') : entity
+            const oldEntityStr = Array.isArray(oldEntity) ? oldEntity.join(',') : String(oldEntity || '');
+            await deleteChunks(oldTitle, oldEntityStr);
+            policy.ischunked = false;
+            policy.chunks = [];
+            policy.status = 'draft';
         }
 
         if (req.file) {
