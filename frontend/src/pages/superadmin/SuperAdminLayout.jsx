@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import minilogo from '../../assets/minilogo.png';
@@ -8,6 +8,23 @@ const SuperAdminLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    useEffect(() => {
+        if (window.innerWidth < 768) {
+            setIsSidebarOpen(false);
+        }
+        const theme = localStorage.getItem('zuari-theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, []);
+
+    const toggleDarkMode = () => {
+        document.documentElement.classList.toggle('dark');
+        localStorage.setItem('zuari-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    };
 
     const menuItems = [
         {
@@ -29,13 +46,21 @@ const SuperAdminLayout = () => {
 
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+            {/* Mobile Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                ></div>
+            )}
+
             {/* Sidebar */}
-            <aside className={`bg-zuari-navy text-white flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'} shadow-xl z-20`}>
-                <div className="p-6 flex items-center justify-between">
+            <aside className={`bg-zuari-navy dark:bg-slate-950 text-white backdrop-blur-2xl border-r border-blue-800 dark:border-slate-800 flex flex-col transition-all duration-300 shadow-xl z-50 fixed md:relative h-full ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full md:w-20 md:translate-x-0'}`}>
+                <div className="p-6 flex items-center justify-between border-b border-gray-200 dark:border-slate-800">
                     {isSidebarOpen ? (
                         <div className="flex items-center gap-3 px-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500 shadow-lg flex items-center justify-center shrink-0">
-                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                            <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-zuari-navy to-blue-600 shadow-md shadow-blue-900/20 flex items-center justify-center shrink-0">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                             </div>
                             <div className="flex flex-col">
                                 <h1 className="text-lg font-extrabold tracking-tight text-white leading-none">AskHR</h1>
@@ -44,8 +69,8 @@ const SuperAdminLayout = () => {
                         </div>
                     ) : (
                         <div className="mx-auto flex justify-center">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500 shadow-lg flex items-center justify-center shrink-0">
-                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                            <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-zuari-navy to-blue-600 shadow-md shadow-blue-900/20 flex items-center justify-center shrink-0">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                             </div>
                         </div>
                     )}
@@ -56,9 +81,9 @@ const SuperAdminLayout = () => {
                         <button
                             key={item.path}
                             onClick={() => navigate(item.path)}
-                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-blue-600 shadow-lg shadow-blue-900/50 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-blue-600 shadow-md shadow-blue-900/40 text-white' : 'text-blue-100 hover:bg-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}
                         >
-                            <div className={`${location.pathname === item.path ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
+                            <div className={`${location.pathname === item.path ? 'text-white' : 'text-blue-200 group-hover:text-white dark:text-slate-400 dark:group-hover:text-white'}`}>
                                 {item.icon}
                             </div>
                             {isSidebarOpen && <span className="font-semibold text-sm tracking-wide">{item.label}</span>}
@@ -66,20 +91,45 @@ const SuperAdminLayout = () => {
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-white/10">
-                    <button
-                        onClick={logout}
-                        className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-red-500/10 hover:text-red-400 text-slate-400 transition-all ${!isSidebarOpen && 'justify-center'}`}
-                    >
-                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                        {isSidebarOpen && <span className="font-medium text-sm">Sign Out</span>}
-                    </button>
+                <div className="p-4 bg-black/10 dark:bg-slate-800/30 border-t border-white/10 dark:border-slate-800 flex items-center gap-3 mt-auto flex-wrap">
+
+                    {isSidebarOpen ? (
+                        <>
+                            <div className="flex-1 overflow-hidden order-1">
+                                <button
+                                    onClick={logout}
+                                    className="text-sm font-medium text-blue-100 hover:text-white flex items-center gap-2"
+                                >
+                                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                    Sign Out
+                                </button>
+                            </div>
+                            <button onClick={toggleDarkMode} className="p-2 ml-auto rounded-lg border border-white/20 dark:border-slate-700 hover:bg-white/20 dark:hover:bg-slate-700 transition-all text-white dark:text-gray-400 cursor-pointer order-2 shadow-md bg-white/10 dark:bg-slate-800 backdrop-blur-sm">
+                                <svg className="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
+                                <svg className="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            </button>
+                        </>
+                    ) : (
+                        <div className="flex flex-col gap-4 w-full justify-center items-center">
+                            <button onClick={toggleDarkMode} className="p-2 rounded-lg border border-white/20 dark:border-slate-700 hover:bg-white/20 dark:hover:bg-slate-700 transition-all text-white dark:text-gray-400 cursor-pointer shadow-md bg-white/10 dark:bg-slate-800 backdrop-blur-sm">
+                                <svg className="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
+                                <svg className="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            </button>
+                            <button
+                                onClick={logout}
+                                className="text-blue-100 hover:text-white flex items-center justify-center p-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/5"
+                                title="Sign Out"
+                            >
+                                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-                <header className="h-16 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between px-8 shadow-sm z-10">
+            <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full">
+                <header className="h-16 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between px-4 sm:px-8 shadow-sm z-10 shrink-0">
                     <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
                     </button>

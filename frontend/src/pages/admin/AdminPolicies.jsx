@@ -255,7 +255,7 @@ const AdminPolicies = () => {
         try {
             if (editingPolicyId) {
                 await updatePolicy(editingPolicyId, formData);
-                toast.success("Policy updated successfully!");
+                toast.success("Policy updated! You need to create chunks and publish it again.", { duration: 5000 });
             } else {
                 await uploadPolicy(formData);
                 toast.success("Policy uploaded successfully!");
@@ -616,8 +616,12 @@ const AdminPolicies = () => {
                                 </div>
                             ) : (
                                 <div>
-                                    <p className="text-lg font-bold text-gray-700">Drag and drop your policy file here</p>
-                                    <p className="text-sm font-bold text-blue-600 mt-1">Browse Files</p>
+                                    <p className="text-lg font-bold text-gray-700">
+                                        {editingPolicyId ? 'Drag and drop to reupload policy file' : 'Drag and drop your policy file here'}
+                                    </p>
+                                    <p className="text-sm font-bold text-blue-600 mt-1">
+                                        {editingPolicyId ? 'Browse to Reupload' : 'Browse Files'}
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -676,7 +680,7 @@ const AdminPolicies = () => {
                                                     {policy.filename.endsWith('.pdf') ? 'PDF' : 'DOC'}
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-gray-800 dark:text-main text-sm">{policy.title}</div>
+                                                    <div className="font-bold text-gray-800 dark:text-white text-sm">{policy.title}</div>
                                                 </div>
                                             </div>
                                         </td>

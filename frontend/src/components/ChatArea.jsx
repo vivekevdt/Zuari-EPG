@@ -17,6 +17,9 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
         if (input.trim() && !isLoading) {
             onSendMessage(input.trim());
             setInput('');
+            // Reset textarea height after sending message
+            const textarea = e.target.tagName === 'TEXTAREA' ? e.target : e.target.querySelector('textarea');
+            if (textarea) textarea.style.height = '56px';
         }
     };
 
@@ -77,11 +80,11 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
             </div>
 
             {/* Chat History / Home View */}
-            <div id="chatHistory" className={`flex-1 overflow-y-auto custom-scrollbar pt-8 pb-4 ${messages.length === 0 ? 'flex flex-col justify-center' : ''}`} ref={scrollRef}>
+            <div id="chatHistory" className={`flex-1 overflow-y-auto custom-scrollbar pt-16 md:pt-8 pb-4 ${messages.length === 0 ? 'flex flex-col justify-center' : ''}`} ref={scrollRef}>
                 {messages.length === 0 ? homeView : (
-                    <div className="max-w-6xl mx-auto px-6 space-y-8 pb-4 w-full">
+                    <div className="max-w-6xl mx-auto px-3 md:px-6 space-y-6 md:space-y-8 pb-4 w-full">
                         {messages.map((msg) => (
-                            <div key={msg._id || msg.id} className={`flex gap-6 animate-up ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                            <div key={msg._id || msg.id} className={`flex gap-3 md:gap-6 animate-up ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                                 <div className={`w-8 h-8 rounded-lg ${msg.role === 'ai' || msg.role === 'assistant' ? 'bg-zuari-navy shadow-lg' : 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm'} shrink-0 flex items-center justify-center`}>
                                     {msg.role === 'ai' || msg.role === 'assistant' ? (
                                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -89,8 +92,8 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                                         <span className="text-[9px] font-black text-gray-400">YOU</span>
                                     )}
                                 </div>
-                                <div className="space-y-4 pt-1 max-w-[85%]">
-                                    <div className={`p-4 rounded-2xl ${msg.role === 'ai' || msg.role === 'assistant' ? 'glass text-[var(--text-main)] border border-gray-100 dark:border-slate-800' : 'bg-zuari-navy text-white shadow-md'}`}>
+                                <div className="space-y-4 pt-1 max-w-[calc(100%-3rem)] md:max-w-[85%] min-w-0">
+                                    <div className={`p-4 rounded-2xl overflow-x-auto custom-scrollbar ${msg.role === 'ai' || msg.role === 'assistant' ? 'glass text-[var(--text-main)] border border-gray-100 dark:border-slate-800' : 'bg-zuari-navy text-white shadow-md'}`}>
                                         <div className={` ${msg.role === 'user' ? 'text-right' : 'font-medium'}`}>
                                             <div
                                                 className={`prose prose-sm max-w-none
@@ -109,7 +112,7 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                         ))}
 
                         {isLoading && (
-                            <div className="flex gap-6 animate-up">
+                            <div className="flex gap-3 md:gap-6 animate-up">
                                 <div className="w-8 h-8 rounded-lg bg-zuari-navy flex items-center justify-center shrink-0">
                                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                 </div>
@@ -125,7 +128,7 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
             </div>
 
             {/* Input Area */}
-            <div className="w-full px-6 pb-10">
+            <div className="w-full px-4 md:px-6 pb-6 md:pb-10">
                 <div className="max-w-6xl mx-auto relative">
                     {messages.length === 0 && (
                         <div className="mb-4">
@@ -159,20 +162,32 @@ const ChatArea = ({ messages, isLoading, onSendMessage, user, toggleSidebar, tog
                             )}
                         </div>
                     )}
-                    <form onSubmit={handleSubmit} className="relative group">
-                        <input
-                            type="text"
+                    <form onSubmit={handleSubmit} className="relative group flex items-end">
+                        <textarea
+                            rows={1}
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            onChange={(e) => {
+                                setInput(e.target.value);
+                                e.target.style.height = 'auto'; // Reset height to recalculate exactly
+                                const scrollHeight = e.target.scrollHeight;
+                                e.target.style.height = Math.max(56, Math.min(scrollHeight, 140)) + 'px';
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSubmit(e);
+                                }
+                            }}
                             placeholder="Ask your HR Assistant anything..."
-                            className="w-full bg-[var(--input-bg)] backdrop-blur-xl shadow-sm border border-gray-200 dark:border-slate-700 rounded-2xl py-4 pl-6 pr-16 outline-none text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-[var(--text-main)]"
+                            className="w-full bg-[var(--input-bg)] backdrop-blur-xl shadow-sm border border-gray-200 dark:border-slate-700 rounded-2xl py-[16px] pl-[24px] pr-[60px] outline-none text-[15px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-[var(--text-main)] resize-none custom-scrollbar leading-[24px]"
+                            style={{ height: '56px' }}
                         />
                         <button
                             type="submit"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zuari-navy text-white rounded-[10px] flex items-center justify-center hover:bg-[#122856] transition-all shadow active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="absolute right-[8px] bottom-[8px] w-[40px] h-[40px] bg-zuari-navy text-white rounded-[12px] flex items-center justify-center hover:bg-[#122856] transition-all shadow-md active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                             disabled={isLoading}
                         >
-                            <svg className="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                            <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 12h14M12 5l7 7-7 7"></path></svg>
                         </button>
                     </form>
                     <p className="text-[11px] text-gray-500 text-center mt-3 font-semibold opacity-60">

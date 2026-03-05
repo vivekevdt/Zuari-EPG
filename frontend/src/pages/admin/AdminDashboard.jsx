@@ -85,7 +85,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {[
                     {
                         label: 'Total Employess', value: stats.totalEmployees, color: 'from-blue-500 to-blue-600', icon: (
@@ -108,15 +108,15 @@ const AdminDashboard = () => {
                         )
                     },
                 ].map((stat, i) => (
-                    <div key={i} className={`relative overflow-hidden rounded-[24px] bg-linear-to-br ${stat.color} p-6 shadow-xl shadow-gray-200 dark:shadow-none group`}>
+                    <div key={i} className={`relative overflow-hidden rounded-2xl md:rounded-[24px] bg-linear-to-br ${stat.color} p-4 md:p-6 shadow-xl shadow-gray-200 dark:shadow-none group`}>
                         <div className="relative z-10">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                            <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
+                                <div className="p-2 md:p-3 bg-white/20 rounded-xl md:rounded-2xl backdrop-blur-md">
                                     {stat.icon}
                                 </div>
-                                <span className="text-sm font-bold text-white/90 uppercase tracking-wider">{stat.label}</span>
+                                <span className="text-xs md:text-sm font-bold text-white/90 uppercase tracking-wider">{stat.label}</span>
                             </div>
-                            <div className="text-5xl font-black text-white tracking-tight">{stat.value}</div>
+                            <div className="text-3xl md:text-5xl font-black text-white tracking-tight">{stat.value}</div>
                         </div>
                         <div className="absolute -right-6 -bottom-6 opacity-20 transform rotate-12 group-hover:scale-110 transition-transform duration-500">
                             {stat.icon}

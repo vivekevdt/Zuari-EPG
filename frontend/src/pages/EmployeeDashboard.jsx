@@ -31,7 +31,8 @@ const EmployeeDashboard = () => {
         // Apply dashboard-specific body classes on mount
         document.body.className = "h-screen flex flex-col relative transition-colors duration-500";
         // Check for theme in localStorage
-        if (localStorage.getItem('zuari-theme') === 'dark') {
+        const theme = localStorage.getItem('zuari-theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
             // Default to light if not set
