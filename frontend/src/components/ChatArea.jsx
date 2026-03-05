@@ -159,7 +159,14 @@ const ChatArea = ({
                                 </div>
                             ) : (
                                 displayFaqs.length > 0 && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    /* Mobile: 1-col list, capped height (~4 rows) with scroll.
+                                       sm+: 2-col; lg+: 4-col, no height cap. */
+                                    <div
+                                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3
+                                                   overflow-y-auto custom-scrollbar
+                                                   max-h-[calc(4*3.75rem+3*0.75rem)]
+                                                   sm:max-h-none sm:overflow-visible"
+                                    >
                                         {displayFaqs.map((faq, index) => {
                                             const style = faqStyles[index % faqStyles.length];
                                             return (
