@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import LoginPage from './pages/LoginPage';
+import HomePage from './pages/HomePage';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminEntities from './pages/admin/AdminEntities';
@@ -19,7 +20,7 @@ const SuperAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace />;
   if (!user.roles?.includes('superAdmin')) return <Navigate to="/" replace />;
 
   return children;
@@ -29,7 +30,7 @@ const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace />;
   if (!user.roles?.includes('admin') && !user.roles?.includes('superAdmin')) return <Navigate to="/" replace />;
 
   return children;
@@ -39,10 +40,10 @@ const EmployeeRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace />;
   // Allow if user has employee role OR both roles (dual-role users can access employee view)
   if (!user.roles?.includes('employee') && !user.roles?.includes('admin') && !user.roles?.includes('superAdmin')) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   // Pure admin (no employee role) → redirect to admin dashboard
   if (!user.roles?.includes('employee')) {
@@ -57,12 +58,12 @@ const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
 
+  // If already logged in, redirect away from /login
   if (user) {
     if (user.roles?.includes('superAdmin')) return <Navigate to="/super-admin/dashboard" replace />;
-    // Dual-role users (employee+admin) default to employee dashboard; they can switch from there
-    if (user.roles?.includes('employee')) return <Navigate to="/" replace />;
+    if (user.roles?.includes('employee')) return <Navigate to="/chat" replace />;
     if (user.roles?.includes('admin')) return <Navigate to="/admin/dashboard" replace />;
-    return <Navigate to="/" replace />;
+    return <Navigate to="/chat" replace />;
   }
 
   return children;
@@ -79,8 +80,10 @@ function App() {
           </PublicRoute>
         } />
 
+        <Route path="/" element={<HomePage />} />
+
         {/* Employee Routes */}
-        <Route path="/" element={
+        <Route path="/chat" element={
           <EmployeeRoute>
             <EmployeeDashboard />
           </EmployeeRoute>

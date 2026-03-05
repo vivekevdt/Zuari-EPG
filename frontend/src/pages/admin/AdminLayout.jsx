@@ -9,6 +9,11 @@ const AdminLayout = () => {
     const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
+
     useEffect(() => {
         if (window.innerWidth < 768) {
             setIsSidebarOpen(false);
@@ -114,7 +119,7 @@ const AdminLayout = () => {
                         <>
                             <div className="flex-1 overflow-hidden order-1">
                                 <button
-                                    onClick={logout}
+                                    onClick={handleLogout}
                                     className="text-sm font-medium text-blue-100 hover:text-white flex items-center gap-2"
                                 >
                                     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -155,7 +160,7 @@ const AdminLayout = () => {
                         {/* Switch view — only for dual-role users */}
                         {user?.roles?.includes('employee') && (
                             <button
-                                onClick={() => navigate('/')}
+                                onClick={() => navigate('/chat')}
                                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-sm font-bold transition-all border border-blue-100 dark:border-blue-800"
                                 title="Switch to Employee Dashboard"
                             >
