@@ -18,6 +18,11 @@ const EmployeeDashboard = () => {
     };
     const isAlsoAdmin = contextUser?.roles?.includes('admin') || contextUser?.roles?.includes('superAdmin');
 
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
+
     const [sessions, setSessions] = useState([]);
     const [activeSessionId, setActiveSessionId] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -204,7 +209,7 @@ const EmployeeDashboard = () => {
                 onSelectSession={handleSelectSession}
                 onNewChat={handleNewChat}
                 onDeleteSession={handleDeleteSession}
-                onLogout={logout}
+                onLogout={handleLogout}
                 isOpen={isSidebarOpen}
                 toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 onOpenCalendar={() => { setIsCalendarOpen(true); setIsSidebarOpen(false); }}
