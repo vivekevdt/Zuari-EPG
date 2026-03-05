@@ -13,6 +13,7 @@ const EmployeeDashboard = () => {
     const user = {
         name: contextUser?.name || 'Employee',
         email: contextUser?.email,
+        gender: contextUser?.gender,
         avatar: contextUser?.avatar || null
     };
     const isAlsoAdmin = contextUser?.roles?.includes('admin') || contextUser?.roles?.includes('superAdmin');

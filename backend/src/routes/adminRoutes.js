@@ -21,7 +21,8 @@ import {
     downloadEmployeeTemplate,
     previewEmployeesCsv,
     bulkCreateEmployees,
-    getArchivedPolicies
+    getArchivedPolicies,
+    generatePolicyFaqs
 } from '../controllers/adminController.js';
 
 import { handlePlaygroundChat, handlePlaygroundReset } from '../controllers/playground/playgroundController.js';
@@ -125,6 +126,7 @@ router.post('/upload-policy', protect, admin, upload.single('policyDocument'), u
 router.put('/policies/:id', protect, admin, upload.single('policyDocument'), updatePolicy);
 router.post('/policies/:id/chunk', protect, admin, createChunks);
 router.post('/policies/:id/publish', protect, admin, publishPolicy);
+router.post('/policies/:id/faqs/generate', protect, admin, generatePolicyFaqs);
 router.delete('/policies/:id', protect, admin, deletePolicy);
 
 // Logs

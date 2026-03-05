@@ -12,6 +12,7 @@ const loginUser = async (email, password) => {
             _id: user._id,
             name: user.name,
             email: user.email,
+            gender: user.gender,
             roles: user.roles,
             entity: user.entity,
             is_account_activated: user.is_account_activated,
@@ -22,7 +23,7 @@ const loginUser = async (email, password) => {
     }
 };
 
-const registerUser = async (name, email, password, roles, entity, level, status, entity_code, empCategory, skipIfExists = false) => {
+const registerUser = async (name, email, password, roles, entity, level, status, entity_code, empCategory, skipIfExists = false, gender = 'Male') => {
     const userExists = await User.findOne({ email });
 
     if (userExists) {
@@ -60,6 +61,7 @@ const registerUser = async (name, email, password, roles, entity, level, status,
         status: cleaningStatus,
         entity_code: entity_code || '',
         empCategory: empCategory || null,
+        gender: gender,
         is_account_activated: false // Force activation/reset on first login
     });
 
@@ -77,6 +79,7 @@ const registerUser = async (name, email, password, roles, entity, level, status,
             level: user.level,
             status: user.status,
             entity_code: user.entity_code,
+            gender: user.gender,
             is_account_activated: false
         };
     } else {
@@ -100,6 +103,7 @@ const activateUserAccount = async (email, currentPassword, newPassword) => {
             email: updatedUser.email,
             roles: updatedUser.roles,
             entity: updatedUser.entity,
+            gender: updatedUser.gender,
             is_account_activated: true,
             token: generateToken(updatedUser._id, updatedUser.name, updatedUser.email),
         };
