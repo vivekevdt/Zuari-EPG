@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import EmployeeDashboard from './pages/EmployeeDashboard';
-import LoginPage from './pages/LoginPage';
+// Note: LoginPage component removed; login is handled via a modal on the HomePage
 import HomePage from './pages/HomePage';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -14,6 +14,7 @@ import AdminConfig from './pages/admin/AdminConfig';
 import SuperAdminLayout from './pages/superadmin/SuperAdminLayout';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminVectorDb from './pages/superadmin/SuperAdminVectorDb';
+import SuperAdminFeedbacks from './pages/superadmin/SuperAdminFeedbacks';
 import Playground from './pages/Playground';
 
 const SuperAdminRoute = ({ children }) => {
@@ -74,11 +75,7 @@ function App() {
     <AuthProvider>
       <Toaster position="top-center" />
       <Routes>
-        <Route path="/login" element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        } />
+        <Route path="/login" element={<Navigate to="/" replace />} />
 
         <Route path="/" element={<HomePage />} />
 
@@ -117,6 +114,7 @@ function App() {
           <Route path="dashboard" element={<SuperAdminDashboard />} />
           <Route path="vector-db" element={<SuperAdminVectorDb />} />
           <Route path="playground" element={<Playground />} />
+          <Route path="feedbacks" element={<SuperAdminFeedbacks />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
