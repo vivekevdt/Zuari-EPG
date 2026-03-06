@@ -771,3 +771,20 @@ export const getFeedbacksAdmin = async (filters = {}) => {
         throw error;
     }
 };
+
+export const getInteractionsAdmin = async (filters = {}) => {
+    try {
+        const queryParams = new URLSearchParams(filters).toString();
+        const response = await fetch(`${API_URL}/api/super-admin/interactions?${queryParams}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch interactions');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};

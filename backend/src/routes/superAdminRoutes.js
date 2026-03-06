@@ -1,6 +1,7 @@
 import express from 'express';
 import { getVectorDbData, optimizeVectorDb } from '../controllers/superAdminController.js';
 import { getFeedbacks } from '../controllers/feedbackController.js';
+import { getInteractionsAdmin } from '../controllers/interactionsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -21,5 +22,8 @@ router.post('/vector-db/optimize', protect, superAdmin, optimizeVectorDb);
 
 // Feedback
 router.get('/feedbacks', protect, superAdmin, getFeedbacks);
+
+// User Q&A Interactions
+router.get('/interactions', protect, superAdmin, getInteractionsAdmin);
 
 export default router;
