@@ -65,6 +65,7 @@ const ChatArea = ({
 
     // Feedback states
     const [feedbackMap, setFeedbackMap] = useState({}); // msgId -> 'up'|'down'
+    const [submittedSet, setSubmittedSet] = useState(new Set()); // msgIds with submitted feedback
     const [feedbackModal, setFeedbackModal] = useState(null); // { msgId, question, answer }
 
     useEffect(() => {
@@ -97,6 +98,9 @@ const ChatArea = ({
 
     const handleThumb = async (msg, msgIndex, thumb) => {
         const msgId = msg._id || msg.id;
+        // Already submitted — ignore
+        if (submittedSet.has(msgId)) return;
+
         setFeedbackMap(prev => ({ ...prev, [msgId]: thumb }));
 
         if (thumb === 'down') {
@@ -110,6 +114,8 @@ const ChatArea = ({
                     thumbs: 'up',
                     description: ''
                 });
+                // Lock the buttons
+                setSubmittedSet(prev => new Set([...prev, msgId]));
             } catch (e) {
                 console.error('Feedback error:', e);
             }
@@ -125,6 +131,8 @@ const ChatArea = ({
                 thumbs: 'down',
                 description
             });
+            // Lock the buttons for this message
+            setSubmittedSet(prev => new Set([...prev, feedbackModal.msgId]));
         } catch (e) {
             console.error('Feedback error:', e);
         }
@@ -249,37 +257,60 @@ const ChatArea = ({
                                         {/* Thumbs feedback — only for AI messages */}
                                         {isAI && (
                                             <div className="flex items-center gap-2 pt-1 pl-1">
-                                                {/* Thumbs Up */}
-                                                <button
-                                                    title="Helpful"
-                                                    onClick={() => handleThumb(msg, msgIndex, 'up')}
-                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                                                {submittedSet.has(msgId) ? (
+                                                    // Locked state — show selected thumb + thanks
+                                                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold
                                                         ${currentThumb === 'up'
-                                                            ? 'bg-green-100 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400'
-                                                            : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-green-300 hover:text-green-600'
-                                                        }`}
-                                                >
-                                                    <svg className="w-3.5 h-3.5" fill={currentThumb === 'up' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.904 0 .715-.211 1.413-.608 2.008L7 13v7m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                                    </svg>
-                                                    {currentThumb === 'up' ? 'Helpful' : 'Helpful?'}
-                                                </button>
+                                                            ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-400'
+                                                            : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-700 dark:text-red-400'
+                                                        }`}>
+                                                        {currentThumb === 'up' ? (
+                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.904 0 .715-.211 1.413-.608 2.008L7 13v7m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                                            </svg>
+                                                        ) : (
+                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                                                            </svg>
+                                                        )}
+                                                        <span>Thanks for your feedback!</span>
+                                                    </div>
+                                                ) : (
+                                                    // Interactive state
+                                                    <>
+                                                        {/* Thumbs Up */}
+                                                        <button
+                                                            title="Helpful"
+                                                            onClick={() => handleThumb(msg, msgIndex, 'up')}
+                                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                                                                ${currentThumb === 'up'
+                                                                    ? 'bg-green-100 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400'
+                                                                    : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-green-300 hover:text-green-600'
+                                                                }`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill={currentThumb === 'up' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.904 0 .715-.211 1.413-.608 2.008L7 13v7m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                                            </svg>
+                                                            {currentThumb === 'up' ? 'Helpful' : 'Helpful?'}
+                                                        </button>
 
-                                                {/* Thumbs Down */}
-                                                <button
-                                                    title="Not helpful"
-                                                    onClick={() => handleThumb(msg, msgIndex, 'down')}
-                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all
-                                                        ${currentThumb === 'down'
-                                                            ? 'bg-red-100 border-red-300 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-400'
-                                                            : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-600'
-                                                        }`}
-                                                >
-                                                    <svg className="w-3.5 h-3.5" fill={currentThumb === 'down' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-                                                    </svg>
-                                                    {currentThumb === 'down' ? 'Not helpful' : 'Not helpful?'}
-                                                </button>
+                                                        {/* Thumbs Down */}
+                                                        <button
+                                                            title="Not helpful"
+                                                            onClick={() => handleThumb(msg, msgIndex, 'down')}
+                                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                                                                ${currentThumb === 'down'
+                                                                    ? 'bg-red-100 border-red-300 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-400'
+                                                                    : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-600'
+                                                                }`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill={currentThumb === 'down' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0 .715-.211 1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                                                            </svg>
+                                                            {currentThumb === 'down' ? 'Not helpful' : 'Not helpful?'}
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
                                     </div>
