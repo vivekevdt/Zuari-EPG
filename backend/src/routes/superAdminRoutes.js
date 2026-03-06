@@ -1,5 +1,6 @@
 import express from 'express';
 import { getVectorDbData, optimizeVectorDb } from '../controllers/superAdminController.js';
+import { getFeedbacks } from '../controllers/feedbackController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -17,5 +18,8 @@ const superAdmin = (req, res, next) => {
 // Vector DB Visualization
 router.get('/vector-db', protect, superAdmin, getVectorDbData);
 router.post('/vector-db/optimize', protect, superAdmin, optimizeVectorDb);
+
+// Feedback
+router.get('/feedbacks', protect, superAdmin, getFeedbacks);
 
 export default router;

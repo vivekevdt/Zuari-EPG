@@ -2,6 +2,58 @@ import React, { useRef, useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 import manImg from '../assets/man.png';
 import womanImg from '../assets/woman.png';
+import { submitFeedback } from '../api';
+
+const FeedbackModal = ({ onClose, onSubmit }) => {
+    const [desc, setDesc] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
+        setSubmitting(true);
+        await onSubmit(desc);
+        setSubmitting(false);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 w-full max-w-md mx-4 p-6 animate-up">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Help us improve AskHR</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Please give feedback so that we can improve our AskHR system</p>
+                    </div>
+                </div>
+                <textarea
+                    className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-white text-sm p-3 outline-none focus:ring-2 focus:ring-red-400/30 focus:border-red-400 resize-none transition-all"
+                    rows={4}
+                    placeholder="Describe what was wrong or how we can improve... (optional)"
+                    value={desc}
+                    onChange={e => setDesc(e.target.value)}
+                />
+                <div className="flex gap-3 mt-4">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className="flex-1 py-2.5 rounded-xl bg-zuari-navy text-white text-sm font-semibold hover:bg-[#122856] transition-all disabled:opacity-70"
+                    >
+                        {submitting ? 'Submitting...' : 'Submit Feedback'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const ChatArea = ({
     messages, isLoading, onSendMessage, user, toggleSidebar,
@@ -10,6 +62,10 @@ const ChatArea = ({
 }) => {
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
+
+    // Feedback states
+    const [feedbackMap, setFeedbackMap] = useState({}); // msgId -> 'up'|'down'
+    const [feedbackModal, setFeedbackModal] = useState(null); // { msgId, question, answer }
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -22,7 +78,6 @@ const ChatArea = ({
         if (input.trim() && !isLoading) {
             onSendMessage(input.trim());
             setInput('');
-            // Reset textarea height after sending message
             const textarea = e.target.tagName === 'TEXTAREA' ? e.target : e.target.querySelector('textarea');
             if (textarea) textarea.style.height = '56px';
         }
@@ -30,6 +85,62 @@ const ChatArea = ({
 
     const handleSuggestion = (text) => {
         onSendMessage(text);
+    };
+
+    // Find the user question that precedes a given ai message index
+    const getRelatedQuestion = (msgIndex) => {
+        for (let i = msgIndex - 1; i >= 0; i--) {
+            if (messages[i].role === 'user') return messages[i].content || '';
+        }
+        return '';
+    };
+
+    const handleThumb = async (msg, msgIndex, thumb) => {
+        const msgId = msg._id || msg.id;
+        setFeedbackMap(prev => ({ ...prev, [msgId]: thumb }));
+
+        if (thumb === 'down') {
+            const question = getRelatedQuestion(msgIndex);
+            setFeedbackModal({ msgId, question, answer: msg.content });
+        } else {
+            try {
+                await submitFeedback({
+                    userQuestion: getRelatedQuestion(msgIndex),
+                    aiResponse: msg.content,
+                    thumbs: 'up',
+                    description: ''
+                });
+            } catch (e) {
+                console.error('Feedback error:', e);
+            }
+        }
+    };
+
+    const handleModalSubmit = async (description) => {
+        if (!feedbackModal) return;
+        try {
+            await submitFeedback({
+                userQuestion: feedbackModal.question,
+                aiResponse: feedbackModal.answer,
+                thumbs: 'down',
+                description
+            });
+        } catch (e) {
+            console.error('Feedback error:', e);
+        }
+        setFeedbackModal(null);
+    };
+
+    const handleModalClose = () => {
+        // Remove the 'down' state if user cancels
+        if (feedbackModal) {
+            setFeedbackMap(prev => {
+                const copy = { ...prev };
+                delete copy[feedbackModal.msgId];
+                return copy;
+            });
+        }
+        setFeedbackModal(null);
     };
 
     const displayFaqs = dynamicFaqs?.length > 0 ? dynamicFaqs.slice(0, 8) : [];
@@ -81,7 +192,14 @@ const ChatArea = ({
 
     return (
         <div className="flex-1 flex flex-col h-full bg-transparent relative overflow-hidden">
-            {/* Header */}
+            {/* Feedback Modal */}
+            {feedbackModal && (
+                <FeedbackModal
+                    onClose={handleModalClose}
+                    onSubmit={handleModalSubmit}
+                />
+            )}
+
             {/* Header Removed */}
             <div className="absolute top-4 left-4 z-50 md:hidden">
                 <button onClick={toggleSidebar} className="p-2 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md rounded-lg shadow-sm border border-gray-100 dark:border-slate-700">
@@ -93,39 +211,81 @@ const ChatArea = ({
             <div id="chatHistory" className={`flex-1 overflow-y-auto custom-scrollbar pt-16 md:pt-8 pb-4 ${messages.length === 0 ? 'flex flex-col justify-center' : ''}`} ref={scrollRef}>
                 {messages.length === 0 ? homeView : (
                     <div className="max-w-6xl mx-auto px-3 md:px-6 space-y-6 md:space-y-8 pb-4 w-full">
-                        {messages.map((msg) => (
-                            <div key={msg._id || msg.id} className={`flex gap-3 md:gap-6 animate-up ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`w-8 h-8 rounded-lg ${msg.role === 'ai' || msg.role === 'assistant' ? 'bg-zuari-navy shadow-lg' : (user?.gender === 'Female' || user?.gender === 'Male' ? '' : 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm')} shrink-0 flex items-center justify-center`}>
-                                    {msg.role === 'ai' || msg.role === 'assistant' ? (
-                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    ) : (
-                                        user?.gender === 'Female' ? (
-                                            <img src={womanImg} alt="User Avatar" className="w-full h-full object-cover rounded-lg" />
-                                        ) : user?.gender === 'Male' ? (
-                                            <img src={manImg} alt="User Avatar" className="w-full h-full object-cover rounded-lg" />
-                                        ) : (
-                                            <span className="text-[9px] font-black text-gray-400">YOU</span>
-                                        )
-                                    )}
-                                </div>
-                                <div className="space-y-4 pt-1 max-w-[calc(100%-3rem)] md:max-w-[85%] min-w-0">
-                                    <div className={`p-4 rounded-2xl overflow-x-auto custom-scrollbar ${msg.role === 'ai' || msg.role === 'assistant' ? 'glass text-[var(--text-main)] border border-gray-100 dark:border-slate-800' : 'bg-zuari-navy text-white shadow-md'}`}>
-                                        <div className={` ${msg.role === 'user' ? 'text-right' : 'font-medium'}`}>
-                                            <div
-                                                className={`prose prose-sm max-w-none
-                                                ${msg.role === 'user' ? 'text-white prose-p:text-white prose-headings:text-white prose-strong:text-white prose-ul:text-white prose-li:text-white' : 'prose-p:text-[var(--text-main)] prose-headings:text-[var(--text-main)] prose-strong:text-[var(--text-main)] prose-ul:text-[var(--text-main)] prose-li:text-[var(--text-main)]'}
-                                                prose-li:marker:text-[var(--text-muted)]
-                                                prose-p:my-1 prose-headings:my-2 prose-ul:my-2 prose-li:my-0.5
-                                                dark:prose-invert`}
-                                                dangerouslySetInnerHTML={{
-                                                    __html: msg.content
-                                                }} />
+                        {messages.map((msg, msgIndex) => {
+                            const isAI = msg.role === 'ai' || msg.role === 'assistant';
+                            const msgId = msg._id || msg.id;
+                            const currentThumb = feedbackMap[msgId];
 
+                            return (
+                                <div key={msgId} className={`flex gap-3 md:gap-6 animate-up ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                    <div className={`w-8 h-8 rounded-lg ${isAI ? 'bg-zuari-navy shadow-lg' : (user?.gender === 'Female' || user?.gender === 'Male' ? '' : 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm')} shrink-0 flex items-center justify-center`}>
+                                        {isAI ? (
+                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                        ) : (
+                                            user?.gender === 'Female' ? (
+                                                <img src={womanImg} alt="User Avatar" className="w-full h-full object-cover rounded-lg" />
+                                            ) : user?.gender === 'Male' ? (
+                                                <img src={manImg} alt="User Avatar" className="w-full h-full object-cover rounded-lg" />
+                                            ) : (
+                                                <span className="text-[9px] font-black text-gray-400">YOU</span>
+                                            )
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-1 pt-1 max-w-[calc(100%-3rem)] md:max-w-[85%] min-w-0">
+                                        <div className={`p-4 rounded-2xl overflow-x-auto custom-scrollbar ${isAI ? 'glass text-[var(--text-main)] border border-gray-100 dark:border-slate-800' : 'bg-zuari-navy text-white shadow-md'}`}>
+                                            <div className={`${msg.role === 'user' ? 'text-right' : 'font-medium'}`}>
+                                                <div
+                                                    className={`prose prose-sm max-w-none
+                                                    ${msg.role === 'user' ? 'text-white prose-p:text-white prose-headings:text-white prose-strong:text-white prose-ul:text-white prose-li:text-white' : 'prose-p:text-[var(--text-main)] prose-headings:text-[var(--text-main)] prose-strong:text-[var(--text-main)] prose-ul:text-[var(--text-main)] prose-li:text-[var(--text-main)]'}
+                                                    prose-li:marker:text-[var(--text-muted)]
+                                                    prose-p:my-1 prose-headings:my-2 prose-ul:my-2 prose-li:my-0.5
+                                                    dark:prose-invert`}
+                                                    dangerouslySetInnerHTML={{ __html: msg.content }}
+                                                />
+                                            </div>
                                         </div>
+
+                                        {/* Thumbs feedback — only for AI messages */}
+                                        {isAI && (
+                                            <div className="flex items-center gap-2 pt-1 pl-1">
+                                                {/* Thumbs Up */}
+                                                <button
+                                                    title="Helpful"
+                                                    onClick={() => handleThumb(msg, msgIndex, 'up')}
+                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                                                        ${currentThumb === 'up'
+                                                            ? 'bg-green-100 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400'
+                                                            : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-green-300 hover:text-green-600'
+                                                        }`}
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill={currentThumb === 'up' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.904 0 .715-.211 1.413-.608 2.008L7 13v7m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                                    </svg>
+                                                    {currentThumb === 'up' ? 'Helpful' : 'Helpful?'}
+                                                </button>
+
+                                                {/* Thumbs Down */}
+                                                <button
+                                                    title="Not helpful"
+                                                    onClick={() => handleThumb(msg, msgIndex, 'down')}
+                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                                                        ${currentThumb === 'down'
+                                                            ? 'bg-red-100 border-red-300 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-400'
+                                                            : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-600'
+                                                        }`}
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill={currentThumb === 'down' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                                                    </svg>
+                                                    {currentThumb === 'down' ? 'Not helpful' : 'Not helpful?'}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {isLoading && (
                             <div className="flex gap-3 md:gap-6 animate-up">
@@ -159,8 +319,6 @@ const ChatArea = ({
                                 </div>
                             ) : (
                                 displayFaqs.length > 0 && (
-                                    /* Mobile: 1-col list, capped height (~4 rows) with scroll.
-                                       sm+: 2-col; lg+: 4-col, no height cap. */
                                     <div
                                         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3
                                                    overflow-y-auto custom-scrollbar
@@ -176,7 +334,7 @@ const ChatArea = ({
                                                             {style.icon}
                                                         </svg>
                                                     </div>
-                                                    <span className="font-semibold text-[13px] text-[var(--text-main)] ml-3 leading-snug ">{faq.question}</span>
+                                                    <span className="font-semibold text-[13px] text-[var(--text-main)] ml-3 leading-snug">{faq.question}</span>
                                                 </button>
                                             );
                                         })}
@@ -191,7 +349,7 @@ const ChatArea = ({
                             value={input}
                             onChange={(e) => {
                                 setInput(e.target.value);
-                                e.target.style.height = 'auto'; // Reset height to recalculate exactly
+                                e.target.style.height = 'auto';
                                 const scrollHeight = e.target.scrollHeight;
                                 e.target.style.height = Math.max(56, Math.min(scrollHeight, 140)) + 'px';
                             }}

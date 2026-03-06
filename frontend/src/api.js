@@ -737,3 +737,37 @@ export const deletePolicyCategory = async (id) => {
     if (!r.ok) throw new Error(d.message || 'Failed to delete policy category');
     return d;
 };
+
+export const submitFeedback = async ({ userQuestion, aiResponse, thumbs, description }) => {
+    try {
+        const response = await fetch(`${API_URL}/api/chat/feedback`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ userQuestion, aiResponse, thumbs, description }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to submit feedback');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const getFeedbacksAdmin = async (filters = {}) => {
+    try {
+        const queryParams = new URLSearchParams(filters).toString();
+        const response = await fetch(`${API_URL}/api/super-admin/feedbacks?${queryParams}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch feedbacks');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
