@@ -788,3 +788,68 @@ export const getInteractionsAdmin = async (filters = {}) => {
         throw error;
     }
 };
+
+// ── Insights API ──────────────────────────────────────────────────────────────
+
+export const getInsightsEntities = async () => {
+    const res = await fetch(`${API_URL}/api/admin/insights/entities`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch entities');
+    return data.data;
+};
+
+export const getInsightsAdoption = async ({ entity = 'all', period = '30' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/adoption?entity=${entity}&period=${period}`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch adoption data');
+    return data.data;
+};
+
+export const getInsightsThemes = async ({ entity = 'all', period = '30' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/themes?entity=${entity}&period=${period}`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch themes');
+    return data.data;
+};
+
+export const getInsightsGaps = async ({ entity = 'all', period = '30', type = 'all' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/gaps?entity=${entity}&period=${period}&type=${type}`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch gaps');
+    return data.data;
+};
+
+export const getInsightsGapQueue = async () => {
+    const res = await fetch(`${API_URL}/api/admin/insights/gaps/queue`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch gap queue');
+    return data.data;
+};
+
+export const flagInsightsGap = async (id, body) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/gaps/${id}/flag`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to flag gap');
+    return data.data;
+};
+
+export const unflagInsightsGap = async (flagId) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/gaps/queue/${flagId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to unflag gap');
+    return data.data;
+};
+
+export const getInsightsDemand = async ({ entity = 'all', period = '30' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/demand?entity=${entity}&period=${period}`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch demand data');
+    return data.data;
+};

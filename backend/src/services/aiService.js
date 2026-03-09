@@ -251,7 +251,130 @@ Example format:
     }
 };
 
+const classifyQuestionTheme = async (question, themeNames = []) => {
+    try {
+        if (!config.GEMINI_API_KEY) return null;
+
+        const themeList = themeNames.map((n, i) => `${i + 1}. ${n}`).join('\n');
+
+        const response = await genAI.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [{ text: `Question: "${question}"` }] }],
+            config: {
+                systemInstruction: `You are an HR analytics assistant. Classify the question into one of these categories:
+${themeList}
+
+RULES:
+- If it matches an existing category, return that exact name.
+- If it's a new HR topic, suggest a concise new category (3-6 words, Title Case).
+- Return ONLY JSON: {"theme": "Category Name", "isNew": boolean}`,
+                temperature: 0.1,
+                maxOutputTokens: 1024
+            }
+        });
+
+        console.log('classifyQuestionTheme: Raw response keys:', Object.keys(response || {}));
+
+        let text = '';
+        if (response) {
+            if (typeof response.text === 'function') {
+                text = response.text();
+            } else if (response.text) {
+                text = response.text;
+            } else if (response.response && typeof response.response.text === 'function') {
+                text = response.response.text();
+            } else if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts && response.candidates[0].content.parts[0]) {
+                text = response.candidates[0].content.parts[0].text;
+            }
+        }
+
+        if (!text) return null;
+
+        // Robust JSON extraction: look for the first { and last }
+        const first = text.indexOf('{');
+        const last = text.lastIndexOf('}');
+        if (first === -1 || last === -1) return null;
+
+        const jsonStr = text.substring(first, last + 1);
+        try {
+            return JSON.parse(jsonStr);
+        } catch (e) {
+            console.error('classifyQuestionTheme: JSON parse failed for:', jsonStr);
+            return null;
+        }
+    } catch (err) {
+        console.error('classifyQuestionTheme error:', err);
+        return null;
+    }
+};
+
+/**
+ * ── Cluster Demand Gaps ───────────────────────────────────────────────────
+ * Analyzes unhelpful feedback questions and dynamically identifies 3-5 
+ * emerging themes/knowledge gaps.
+ */
+export const clusterDemandGaps = async (feedbacks) => {
+    if (!feedbacks || feedbacks.length === 0) return [];
+
+    try {
+        const prompt = `
+        Analyze these employee questions and group them into 3-5 distinct knowledge gaps (clusters).
+        Questions:
+        ${feedbacks.map((f, i) => `[ID:${i}] ${f}`).join('\n')}
+
+        Return your analysis ONLY as a JSON array of objects with exactly this structure:
+        [
+          {
+            "theme": "Theme Title",
+            "indices": [index1, index2],
+            "samples": ["sample question text 1", "sample question text 2"]
+          }
+        ]
+        
+        Use the [ID:x] numbers provided above for the "indices" array.
+        `;
+
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+                systemInstruction: "You are an HR Analytics expert. Your task is to analyze a list of employee questions that the chatbot failed to answer correctly (unhelpful feedback). Cluster these questions into 3-5 distinct, meaningful themes or knowledge gaps. Provide a title for the theme, a count of how many questions belong to it, and 2 sample questions for each.",
+                maxOutputTokens: 2000,
+                temperature: 0.2
+            }
+        });
+
+        let responseText = "";
+        if (typeof response.text === 'function') {
+            responseText = response.text();
+        } else if (response.text) {
+            responseText = response.text;
+        } else if (response.response && typeof response.response.text === 'function') {
+            responseText = response.response.text();
+        }
+
+        if (!responseText) return [];
+
+        // Use robust JSON extraction
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
+
+        try {
+            return JSON.parse(jsonStr);
+        } catch (e) {
+            console.error('clusterDemandGaps: JSON parse failed for:', jsonStr);
+            return [];
+        }
+    } catch (err) {
+        console.error('clusterDemandGaps error:', err);
+        return [];
+    }
+};
+
 export default {
     generateAIResponse,
-    generateDynamicFAQs
+    generateDynamicFAQs,
+    classifyQuestionTheme,
+    clusterDemandGaps
 };
+

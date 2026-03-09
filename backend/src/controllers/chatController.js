@@ -1,6 +1,7 @@
 import chatService from '../services/chatService.js';
 import aiService from '../services/aiService.js';
 import { createLog } from '../utils/logger.js';
+import { classifyAndRecord } from '../services/themeService.js';
 
 // @desc    Create a new conversation
 // @route   POST /api/chat/conversation
@@ -103,6 +104,21 @@ const sendMessage = async (req, res, next) => {
         const userMessage = await chatService.saveMessage(conversation._id, req.user._id, 'user', content);
 
         await createLog(req.user._id, req.user.name, req.user.roles?.join(', ') || 'employee', req.user.entity, `Prompted AI: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
+
+        // 1.5 Fire-and-forget: classify this question into a theme (never blocks the response)
+        try {
+            classifyAndRecord({
+                messageId: userMessage._id,
+                userId: req.user._id,
+                conversationId: conversation._id,
+                question: content,
+                // Pass raw data, let classifyAndRecord handle lookup if needed
+                entityName: req.user.entity?.name || req.user.entity_code || '',
+                levelName: req.user.level?.name || ''
+            }).catch(err => console.error('Theme classification error (fire-and-forget):', err.message));
+        } catch (err) {
+            console.error('Theme classification initiation failed:', err.message);
+        }
 
         // 2. Fetch recent context
         const recentMessages = await chatService.getRecentMessages(conversation._id);

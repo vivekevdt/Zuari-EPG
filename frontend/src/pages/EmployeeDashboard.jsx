@@ -64,13 +64,11 @@ const EmployeeDashboard = () => {
             localStorage.setItem(visitKey, visits.toString());
             sessionStorage.setItem(sessionVisitKey, 'true');
         }
-        console.log(hasIncrementedSession)
 
         const onboardingCompleted = localStorage.getItem(onboardingKey);
         const feedbackCompletedKey = `feedback_completed_visit_${visits}_${userEmail}`;
         const feedbackCompletedForThisVisit = localStorage.getItem(feedbackCompletedKey);
 
-        console.log(visits)
 
         if (!onboardingCompleted && visits === 1) {
             setShowOnboarding(true);
