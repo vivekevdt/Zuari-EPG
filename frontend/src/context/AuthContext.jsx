@@ -36,6 +36,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const { email } = JSON.parse(userInfo);
+                if (email) sessionStorage.removeItem(`session_active_${email}`);
+            } catch (e) { }
+        }
         localStorage.removeItem('userInfo');
         setUser(null);
     };
