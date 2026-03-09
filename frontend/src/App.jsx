@@ -11,6 +11,7 @@ import AdminPolicies from './pages/admin/AdminPolicies';
 import AdminInteractions from './pages/admin/AdminInteractions';
 import AdminEmployees from './pages/admin/AdminEmployees';
 import AdminConfig from './pages/admin/AdminConfig';
+import AdminInsights from './pages/admin/AdminInsights';
 import SuperAdminLayout from './pages/superadmin/SuperAdminLayout';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminVectorDb from './pages/superadmin/SuperAdminVectorDb';
@@ -103,6 +104,7 @@ function App() {
           <Route path="user-management" element={<AdminEmployees />} />
           <Route path="config" element={<AdminConfig />} />
           <Route path="playground" element={<Playground />} />
+          <Route path="insights" element={<AdminInsights />} />
         </Route>
 
         {/* Super Admin Routes */}

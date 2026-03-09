@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import vectorDbRoutes from './routes/vectorDbRoutes.js';
 import superAdminRoutes from './routes/superAdminRoutes.js';
+import insightsRoutes from './routes/insightsRoutes.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/admin/insights', insightsRoutes);
 
 
 app.use('/api/vDB-visualize', vectorDbRoutes);
