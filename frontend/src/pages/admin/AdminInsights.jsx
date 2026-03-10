@@ -59,7 +59,7 @@ const StatCard = ({ label, value, delta, subText, color }) => {
 // ── Main Component ────────────────────────────────────────────────────────────
 const AdminInsights = () => {
     const [entity, setEntity] = useState('all');
-    const [period, setPeriod] = useState('30');
+    const [period] = useState('7');
     const [gapFilter, setGapFilter] = useState('all');
     const [entities, setEntities] = useState([]);
 
@@ -149,7 +149,7 @@ const AdminInsights = () => {
     const filteredGaps = gapFilter === 'all' ? gaps : gaps.filter(g => g.type === gapFilter);
     const visibleThemes = themes.filter(t => t.currentCount > 0);
 
-    const periodLabel = period === '90' ? 'vs prior 90 days' : period === 'year' ? 'vs prior year' : 'vs prior 30 days';
+    const periodLabel = 'vs previous week';
 
     return (
         <div className="space-y-10 pb-12 min-h-full">
@@ -169,14 +169,7 @@ const AdminInsights = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Period</span>
-                        <select value={period} onChange={e => setPeriod(e.target.value)} className="bg-transparent font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer text-sm">
-                            <option value="30">Last 30 days</option>
-                            <option value="90">Last 90 days</option>
-                            <option value="year">This year</option>
-                        </select>
-                    </div>
+                    {/* Period filter removed as per user request */}
                     <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white px-3 py-2 rounded-xl shadow-md shadow-emerald-400/30">
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Live
                     </span>
@@ -192,11 +185,62 @@ const AdminInsights = () => {
                     <EmptyState icon="📊" title="No data yet" desc="Conversations will appear here once employees start chatting." />
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                            <StatCard label="Total Conversations" value={adoption.totalConversations?.value} delta={adoption.totalConversations?.delta} subText={periodLabel} color="blue" />
-                            <StatCard label="Unique Employees" value={adoption.uniqueEmployees?.value} delta={adoption.uniqueEmployees?.delta} subText={`of ${adoption.uniqueEmployees?.total || '?'} total`} color="green" />
-                            <StatCard label="Queries This Week" value={adoption.queriesThisWeek?.value} delta={adoption.queriesThisWeek?.delta} subText="week-on-week" color="amber" />
-                            <StatCard label="Unhelpful Ratings" value={adoption.unhelpfulRatings?.value} delta={adoption.unhelpfulRatings?.delta} subText={periodLabel} color="red" />
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                            <StatCard
+                                label="Total Inquiries"
+                                value={adoption.totalInquiries?.value}
+                                delta={adoption.totalInquiries?.delta}
+                                subText={`unique sessions ${periodLabel}`}
+                                color="blue"
+                            />
+                            <StatCard
+                                label="AI Resolution Rate"
+                                value={`${adoption.aiResolutionRate?.value}%`}
+                                delta={adoption.aiResolutionRate?.delta}
+                                subText={`resolved by AI ${periodLabel}`}
+                                color="green"
+                            />
+                            <StatCard
+                                label="HR Time Saved"
+                                value={(() => {
+                                    const mins = adoption.hrTimeSaved?.value || 0;
+                                    if (mins < 60) return `${mins}m`;
+                                    const hrs = Math.floor(mins / 60);
+                                    const remainingMins = mins % 60;
+                                    return remainingMins > 0 ? `${hrs}h ${remainingMins}m` : `${hrs}h`;
+                                })()}
+                                delta={adoption.hrTimeSaved?.delta}
+                                subText={`efficiency gain ${periodLabel}`}
+                                color="amber"
+                            />
+                            <StatCard
+                                label="Human Handoff Rate"
+                                value={`${adoption.humanHandoffRate?.value}%`}
+                                delta={adoption.humanHandoffRate?.delta}
+                                subText={`escalated to HR ${periodLabel}`}
+                                color="red"
+                            />
+                            <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/20 dark:to-slate-800/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+                                <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">User Feedback</div>
+                                <div className="flex items-end gap-4 mb-3">
+                                    <div>
+                                        <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{adoption.userFeedback?.helpful || 0}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase mt-1">Helpful</div>
+                                    </div>
+                                    <div className="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+                                    <div>
+                                        <div className="text-2xl font-black text-red-500 dark:text-red-400 leading-none">{adoption.userFeedback?.unhelpful || 0}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase mt-1">Unhelpful</div>
+                                    </div>
+                                </div>
+                                <div className="text-[9px] text-slate-400 flex gap-2">
+                                    <span className={adoption.userFeedback?.helpfulDelta?.type === 'up' ? 'text-emerald-500 font-bold' : ''}>
+                                        {adoption.userFeedback?.helpfulDelta?.type === 'up' && '↑'} {adoption.userFeedback?.helpfulDelta?.value}% Helpful
+                                    </span>
+                                    <span>•</span>
+                                    <span>{periodLabel}</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -365,14 +409,14 @@ const AdminInsights = () => {
                                     <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-700/40 rounded-xl px-3 py-2.5 mb-3">
                                         <div className="text-center">
                                             <div className="text-xl font-black text-slate-900 dark:text-white leading-none">{t.currentCount}</div>
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">This Period</div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">This Week</div>
                                         </div>
                                         <div className={`text-base font-black ${delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-red-500' : 'text-slate-300 dark:text-slate-600'}`}>
                                             {delta > 0 ? `↑ +${deltaAbs}` : delta < 0 ? `↓ ${deltaAbs}` : '→'}
                                         </div>
                                         <div className="text-center">
                                             <div className="text-xl font-black text-slate-400 dark:text-slate-500 leading-none">{t.prevCount}</div>
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Prev Period</div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Prev Week</div>
                                         </div>
                                     </div>
 

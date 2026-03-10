@@ -43,11 +43,6 @@ const AdminLayout = () => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             )
         },
-        {
-            path: '/admin/insights', label: 'User Monitoring', icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            )
-        },
 
         {
             path: '/admin/policies', label: 'Policy Hub', icon: (
@@ -62,6 +57,17 @@ const AdminLayout = () => {
         {
             path: '/admin/playground', label: '>_ Playground', icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            )
+        },
+        { type: 'header', label: 'User Monitoring' },
+        {
+            path: '/admin/insights', label: 'Usage Insights', icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            )
+        },
+        {
+            path: '/admin/feedback-analysis', label: 'Feedback Analysis', icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
             )
         },
     ];
@@ -99,18 +105,29 @@ const AdminLayout = () => {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.path}
-                            onClick={() => navigate(item.path)}
-                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-blue-600 shadow-md shadow-blue-900/40 text-white' : 'text-blue-100 hover:bg-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}
-                        >
-                            <div className={`${location.pathname === item.path ? 'text-white' : 'text-blue-200 group-hover:text-white dark:text-slate-400 dark:group-hover:text-white'}`}>
-                                {item.icon}
-                            </div>
-                            {isSidebarOpen && <span className="font-semibold text-sm tracking-wide">{item.label}</span>}
-                        </button>
-                    ))}
+                    {menuItems.map((item, idx) => {
+                        if (item.type === 'header') {
+                            return isSidebarOpen ? (
+                                <div key={idx} className="px-4 pt-6 pb-2 text-[10px] font-black text-blue-300/50 uppercase tracking-[0.2em] dark:text-slate-500">
+                                    {item.label}
+                                </div>
+                            ) : (
+                                <div key={idx} className="h-px bg-white/10 dark:bg-slate-800 my-4 mx-4"></div>
+                            );
+                        }
+                        return (
+                            <button
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-blue-600 shadow-md shadow-blue-900/40 text-white' : 'text-blue-100 hover:bg-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}
+                            >
+                                <div className={`${location.pathname === item.path ? 'text-white' : 'text-blue-200 group-hover:text-white dark:text-slate-400 dark:group-hover:text-white'}`}>
+                                    {item.icon}
+                                </div>
+                                {isSidebarOpen && <span className="font-semibold text-sm tracking-wide">{item.label}</span>}
+                            </button>
+                        );
+                    })}
                 </nav>
 
                 <div className="p-4 bg-black/10 dark:bg-slate-800/30 border-t border-white/10 dark:border-slate-800 flex items-center gap-3 mt-auto flex-wrap">

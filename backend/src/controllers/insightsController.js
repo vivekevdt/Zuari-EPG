@@ -1,14 +1,16 @@
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
-import Feedback from '../models/Feedback.js';
+import QueryFeedback from '../models/QueryFeedback.js';
 import InsightFlag from '../models/InsightFlag.js';
 import Entity from '../models/Entity.js';
 import MessageThemeLog from '../models/MessageThemeLog.js';
 import QuestionTheme from '../models/QuestionTheme.js';
+import UserFeedback from '../models/UserFeedback.js';
 
 import aiService from '../services/aiService.js';
 import DemandCache from '../models/DemandCache.js';
+import { generateCSV } from '../utils/csvHelper.js';
 
 
 // ── Helper: get date range from period string ─────────────────────────────────
@@ -20,10 +22,13 @@ const getPeriodRange = (period) => {
         startDate.setDate(startDate.getDate() - 90);
     } else if (period === 'year') {
         startDate = new Date(now.getFullYear(), 0, 1);
-    } else {
-        // default: 30 days
+    } else if (period === '7') {
         startDate = new Date(now);
-        startDate.setDate(startDate.getDate() - 30);
+        startDate.setDate(startDate.getDate() - 7);
+    } else {
+        // default: 7 days (Weekly)
+        startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 7);
     }
     const prevStart = new Date(startDate);
     prevStart.setTime(prevStart.getTime() - (now - startDate));
@@ -54,29 +59,52 @@ export const getAdoption = async (req, res) => {
         // For feedback, use the entity name string directly (as stored by feedbackController)
         const entityFeedbackFilter = entity && entity !== 'all' ? { userEntity: entity } : {};
 
-        // Total conversations
-        const totalConvs = await Conversation.countDocuments({ ...userIdFilter, createdAt: { $gte: startDate, $lte: now } });
-        const prevTotalConvs = await Conversation.countDocuments({ ...userIdFilter, createdAt: { $gte: prevStart, $lt: startDate } });
+        // 1. Total Inquiries (Total volume of unique employee questions)
+        const totalInquiries = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: startDate, $lte: now } });
+        const prevTotalInquiries = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: prevStart, $lt: startDate } });
 
-        // Unique employees with conversations
+        // 2. Unresolved / Human Handoff (Assistant returns "not covered")
+        // Note: For escalation calculation, we look for "not covered" keywords in AI responses
+        const unresolvedQueries = await Message.countDocuments({
+            role: 'ai',
+            content: { $regex: /not covered/i },
+            ...userIdFilter,
+            createdAt: { $gte: startDate, $lte: now }
+        });
+        console.log('Unresolved Queries:', unresolvedQueries);
+        const prevUnresolvedQueries = await Message.countDocuments({
+            role: 'ai',
+            content: { $regex: /not covered/i },
+            ...userIdFilter,
+            createdAt: { $gte: prevStart, $lt: startDate }
+        });
+
+        // 3. AI Resolution Rate
+        const resolvedCount = Math.max(0, totalInquiries - unresolvedQueries);
+        const prevResolvedCount = Math.max(0, prevTotalInquiries - prevUnresolvedQueries);
+
+        const resolutionRate = totalInquiries > 0 ? Math.round((resolvedCount / totalInquiries) * 100) : 0;
+        const prevResolutionRate = prevTotalInquiries > 0 ? Math.round((prevResolvedCount / prevTotalInquiries) * 100) : 0;
+
+        // 4. HR Time Saved (efficiency) - Using 10 minutes average manual handling time
+        const hrTimeSavedMinutes = resolvedCount * 10;
+        const prevHrTimeSavedMinutes = prevResolvedCount * 10;
+
+        // 5. Human Handoff / Escalation Rate
+        const handoffRate = totalInquiries > 0 ? Math.round((unresolvedQueries / totalInquiries) * 100) : 0;
+        const prevHandoffRate = prevTotalInquiries > 0 ? Math.round((prevUnresolvedQueries / prevTotalInquiries) * 100) : 0;
+
+        // 6. User Feedback (Helpful vs Unhelpful)
+        const helpfulCount = await QueryFeedback.countDocuments({ thumbs: 'up', ...entityFeedbackFilter, createdAt: { $gte: startDate, $lte: now } });
+        const prevHelpfulCount = await QueryFeedback.countDocuments({ thumbs: 'up', ...entityFeedbackFilter, createdAt: { $gte: prevStart, $lt: startDate } });
+        const unhelpfulCount = await QueryFeedback.countDocuments({ thumbs: 'down', ...entityFeedbackFilter, createdAt: { $gte: startDate, $lte: now } });
+        const prevUnhelpfulCount = await QueryFeedback.countDocuments({ thumbs: 'down', ...entityFeedbackFilter, createdAt: { $gte: prevStart, $lt: startDate } });
+
+        // Total unique employees for reference
         const uniqueUserIds = await Conversation.distinct('userId', { ...userIdFilter, createdAt: { $gte: startDate, $lte: now } });
-        const prevUniqueUserIds = await Conversation.distinct('userId', { ...userIdFilter, createdAt: { $gte: prevStart, $lt: startDate } });
+        const totalOrgUsers = await User.countDocuments(entityUserIds ? { _id: { $in: entityUserIds }, roles: 'employee' } : { roles: 'employee' });
 
-        // Queries this week
-        const weekStart = new Date(now);
-        weekStart.setDate(weekStart.getDate() - 7);
-        const prevWeekStart = new Date(weekStart);
-        prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-
-        const queriesThisWeek = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: weekStart, $lte: now } });
-        const queriesPrevWeek = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: prevWeekStart, $lt: weekStart } });
-
-        // Feedback ratings (helpful / unhelpful / not voted)
-        const unhelpfulCount = await Feedback.countDocuments({ thumbs: 'down', ...entityFeedbackFilter, createdAt: { $gte: startDate, $lte: now } });
-        const prevUnhelpfulCount = await Feedback.countDocuments({ thumbs: 'down', ...entityFeedbackFilter, createdAt: { $gte: prevStart, $lt: startDate } });
-        const helpfulCount = await Feedback.countDocuments({ thumbs: 'up', ...entityFeedbackFilter, createdAt: { $gte: startDate, $lte: now } });
-
-        // Daily query volume for the last 7 days
+        // Daily volume chart (staying the same for now)
         const last7Days = [];
         for (let i = 6; i >= 0; i--) {
             const dayStart = new Date(now);
@@ -89,95 +117,49 @@ export const getAdoption = async (req, res) => {
             last7Days.push({ day: dayNames[dayStart.getDay()], count });
         }
 
-        // Queries by impact level
-        const allConvUserIds = await Conversation.distinct('userId', { ...userIdFilter, createdAt: { $gte: startDate, $lte: now } });
-        const userLevels = await User.find({ _id: { $in: allConvUserIds } }).select('level').populate('level', 'name');
-        const levelCounts = {};
-        userLevels.forEach(u => {
-            const lvl = u.level?.name || 'Unassigned';
-            levelCounts[lvl] = (levelCounts[lvl] || 0) + 1;
-        });
-        const totalLevelUsers = Object.values(levelCounts).reduce((a, b) => a + b, 0);
-        const byLevel = Object.entries(levelCounts).map(([name, count]) => ({
-            name, count,
-            pct: totalLevelUsers ? Math.round((count / totalLevelUsers) * 100) : 0
-        }));
-
-        // Total users in org
-        const orgFilter = entityUserIds ? { _id: { $in: entityUserIds }, roles: 'employee' } : { roles: 'employee' };
-        const totalOrgUsers = await User.countDocuments(orgFilter);
-
-        // Most Accessed Policies (Themes) aggregation - Mapped to high-level policies
+        // Policy access (staying the same)
         const themeLogs = await MessageThemeLog.aggregate([
             { $match: { createdAt: { $gte: startDate, $lte: now } } },
             { $group: { _id: '$themeName', count: { $sum: 1 } } }
         ]);
-
         const themeToPolicy = {
-            // Travel Policy
-            'Business Travel Approval & Booking': 'Travel Policy',
-            'Travel Expense Reimbursement': 'Travel Policy',
-            'Per Diem & Daily Allowance': 'Travel Policy',
-
-            // Leave & Holiday Policy
-            'Leave Application & Approval': 'Leave and Holiday Policy',
-            'Leave Balance & Entitlement': 'Leave and Holiday Policy',
-            'Leave Carry Forward & Encashment': 'Leave and Holiday Policy',
-            'Holiday Calendar & Optional Holidays': 'Leave and Holiday Policy',
-            'Maternity, Paternity & Special Leaves': 'Leave and Holiday Policy',
-
-            // Health Insurance Policy
-            'Health Insurance Coverage & Benefits': 'Health Insurance Policy',
-            'Medical Claim & Reimbursement Process': 'Health Insurance Policy',
-            'Cashless Treatment & Network Hospitals': 'Health Insurance Policy',
-            'Dependent Coverage (Family Members)': 'Health Insurance Policy',
-
-            // Car Lease Policy
-            'Car Lease Eligibility & Entitlement': 'Car Lease Policy',
-            'Car Lease Application Process': 'Car Lease Policy',
-
-            // Working Hour Policy
-            'Working Hours, Shifts & Attendance': 'Working Hour Policy',
-            'Work from Home & Flexi Policy': 'Working Hour Policy',
-            'Overtime & Compensatory Off': 'Working Hour Policy',
-
-            // Departmental Get-together Policy
+            'Business Travel Approval & Booking': 'Travel Policy', 'Travel Expense Reimbursement': 'Travel Policy', 'Per Diem & Daily Allowance': 'Travel Policy',
+            'Leave Application & Approval': 'Leave and Holiday Policy', 'Leave Balance & Entitlement': 'Leave and Holiday Policy', 'Leave Carry Forward & Encashment': 'Leave and Holiday Policy', 'Holiday Calendar & Optional Holidays': 'Leave and Holiday Policy', 'Maternity, Paternity & Special Leaves': 'Leave and Holiday Policy',
+            'Health Insurance Coverage & Benefits': 'Health Insurance Policy', 'Medical Claim & Reimbursement Process': 'Health Insurance Policy', 'Cashless Treatment & Network Hospitals': 'Health Insurance Policy', 'Dependent Coverage (Family Members)': 'Health Insurance Policy',
+            'Car Lease Eligibility & Entitlement': 'Car Lease Policy', 'Car Lease Application Process': 'Car Lease Policy',
+            'Working Hours, Shifts & Attendance': 'Working Hour Policy', 'Work from Home & Flexi Policy': 'Working Hour Policy', 'Overtime & Compensatory Off': 'Working Hour Policy',
             'Team Events & Departmental Budget': 'Departmental Get-together Policy'
         };
-
-        const policyCounts = {};
-        let totalThemeQueries = 0;
-
+        const policyCounts = {}; let totalThemeQueries = 0;
         themeLogs.forEach(log => {
             const policyName = themeToPolicy[log._id] || 'Other Policies';
             policyCounts[policyName] = (policyCounts[policyName] || 0) + log.count;
             totalThemeQueries += log.count;
         });
-
-        const policyAccess = Object.entries(policyCounts)
-            .map(([name, count]) => ({
-                name,
-                count,
-                percentage: totalThemeQueries ? Math.round((count / totalThemeQueries) * 100) : 0
-            }))
-            .sort((a, b) => b.count - a.count);
+        const policyAccess = Object.entries(policyCounts).map(([name, count]) => ({ name, count, percentage: totalThemeQueries ? Math.round((count / totalThemeQueries) * 100) : 0 })).sort((a, b) => b.count - a.count);
 
         const delta = (curr, prev) => {
-            if (prev === 0) return curr > 0 ? { type: 'up', value: curr } : { type: 'neutral', value: 0 };
+            if (prev === 0) return { type: 'neutral', value: 0 }; // Show 0% if no previous data
             const pct = Math.round(((curr - prev) / prev) * 100);
             return { type: pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral', value: Math.abs(pct) };
         };
 
         res.json({
             data: {
-                totalConversations: { value: totalConvs, delta: delta(totalConvs, prevTotalConvs) },
-                uniqueEmployees: { value: uniqueUserIds.length, total: totalOrgUsers, delta: delta(uniqueUserIds.length, prevUniqueUserIds.length) },
-                queriesThisWeek: { value: queriesThisWeek, delta: delta(queriesThisWeek, queriesPrevWeek) },
-                unhelpfulRatings: { value: unhelpfulCount, delta: delta(unhelpfulCount, prevUnhelpfulCount) },
-                helpfulRatings: { value: helpfulCount },
+                totalInquiries: { value: totalInquiries, delta: delta(totalInquiries, prevTotalInquiries) },
+                aiResolutionRate: { value: resolutionRate, delta: delta(resolutionRate, prevResolutionRate) },
+                hrTimeSaved: { value: hrTimeSavedMinutes, delta: delta(hrTimeSavedMinutes, prevHrTimeSavedMinutes) },
+                humanHandoffRate: { value: handoffRate, delta: delta(handoffRate, prevHandoffRate) },
+                userFeedback: {
+                    helpful: helpfulCount,
+                    unhelpful: unhelpfulCount,
+                    helpfulDelta: delta(helpfulCount, prevHelpfulCount),
+                    unhelpfulDelta: delta(unhelpfulCount, prevUnhelpfulCount)
+                },
                 dailyVolume: last7Days,
-                byLevel,
-                policyAccess // New field for the donut chart
+                policyAccess,
+                // These were in original adoption response, keeping for compatibility if frontend needs them
+                uniqueEmployees: { value: uniqueUserIds.length, total: totalOrgUsers }
             }
         });
     } catch (err) {
@@ -274,7 +256,7 @@ export const getGaps = async (req, res) => {
         };
         if (entity && entity !== 'all') filter.userEntity = entity;
 
-        const gaps = await Feedback.find(filter)
+        const gaps = await QueryFeedback.find(filter)
             .sort({ createdAt: -1 })
             .select('_id userQuestion userEntity userImpactLevel createdAt')
             .lean();
@@ -351,7 +333,7 @@ export const getDemand = async (req, res) => {
         };
         if (entity && entity !== 'all') filter.userEntity = entity;
 
-        const feedbackCount = await Feedback.countDocuments(filter);
+        const feedbackCount = await QueryFeedback.countDocuments(filter);
 
         if (feedbackCount === 0) {
             return res.json({ data: [] });
@@ -370,7 +352,7 @@ export const getDemand = async (req, res) => {
 
 
         // 2. Fetch fresh data if cache miss
-        const feedbacks = await Feedback.find(filter)
+        const feedbacks = await QueryFeedback.find(filter)
             .select('userQuestion userEntity userImpactLevel userCategory')
             .lean();
 
@@ -409,6 +391,136 @@ export const getDemand = async (req, res) => {
         res.json({ data: demand });
     } catch (err) {
         console.error('getDemand error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+export const getFeedbackAnalysis = async (req, res) => {
+    try {
+        const now = new Date();
+        const startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 30);
+        const prevStart = new Date(startDate);
+        prevStart.setDate(prevStart.getDate() - 30);
+
+        // 1. Overall Experience (Rating)
+        const currentFeedbacks = await UserFeedback.find({ createdAt: { $gte: startDate, $lte: now } }).select('rating').lean();
+        const prevFeedbacks = await UserFeedback.find({ createdAt: { $gte: prevStart, $lt: startDate } }).select('rating').lean();
+
+        const avgRating = currentFeedbacks.length > 0
+            ? (currentFeedbacks.reduce((sum, f) => sum + f.rating, 0) / currentFeedbacks.length)
+            : 0;
+
+        const prevAvgRating = prevFeedbacks.length > 0
+            ? (prevFeedbacks.reduce((sum, f) => sum + f.rating, 0) / prevFeedbacks.length)
+            : 0;
+
+        const ratingDiff = (avgRating - prevAvgRating).toFixed(1);
+        const ratingDeltaPrefix = ratingDiff >= 0 ? '+' : '';
+
+        // 2. Improvement Hotspots (Aggregate improvementAreas)
+        const hotspotsAgg = await UserFeedback.aggregate([
+            { $match: { createdAt: { $gte: startDate, $lte: now } } },
+            { $unwind: '$improvementAreas' },
+            { $group: { _id: '$improvementAreas', count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+        ]);
+
+        const totalFeedbackWithImprovement = await UserFeedback.countDocuments({
+            createdAt: { $gte: startDate, $lte: now },
+            'improvementAreas.0': { $exists: true }
+        });
+
+        const hotspots = hotspotsAgg.map(h => ({
+            area: h._id,
+            percentage: totalFeedbackWithImprovement > 0 ? Math.round((h.count / totalFeedbackWithImprovement) * 100) : 0,
+            count: h.count
+        }));
+
+        // 3. Employee Suggestions (Recent feedbacks with comments)
+        const suggestions = await UserFeedback.find({ comment: { $ne: '' } })
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .select('userName comment rating category createdAt improvementAreas successAreas userEntity userImpactLevel')
+            .lean();
+
+        res.json({
+            data: {
+                rating: avgRating.toFixed(1),
+                ratingDelta: `${ratingDeltaPrefix}${ratingDiff}`,
+                hotspots: hotspots.slice(0, 5), // Top 5 hotspots
+                suggestions: suggestions.map(s => ({
+                    id: s._id,
+                    user: s.userName,
+                    text: s.comment,
+                    rating: s.rating,
+                    category: s.category,
+                    date: s.createdAt,
+                    improvementAreas: s.improvementAreas,
+                    successAreas: s.successAreas,
+                    entity: s.userEntity,
+                    level: s.userImpactLevel
+                }))
+            }
+        });
+    } catch (err) {
+        console.error('getFeedbackAnalysis error:', err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+export const exportFeedbackAnalysis = async (req, res) => {
+    try {
+        const feedbacks = await UserFeedback.find({}).sort({ createdAt: -1 }).lean();
+
+        const headers = [
+            'userName',
+            'userEmail',
+            'userEntity',
+            'userImpactLevel',
+            'rating',
+            'category',
+            'improvementAreas',
+            'successAreas',
+            'comment',
+            'createdAt'
+        ];
+
+        // Format data for CSV (especially arrays and dates)
+        const formattedData = feedbacks.map(f => {
+            const date = new Date(f.createdAt);
+            const day = String(date.getDate()).padStart(2, '0');
+            const monthNum = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+
+            return {
+                ...f,
+                improvementAreas: (f.improvementAreas || []).join('; '),
+                successAreas: (f.successAreas || []).join('; '),
+                date: `="${day}/${monthNum}/${year}"`
+            };
+        });
+
+        const csv = generateCSV(formattedData, [
+            'userName',
+            'userEmail',
+            'userEntity',
+            'userImpactLevel',
+            'rating',
+            'category',
+            'improvementAreas',
+            'successAreas',
+            'comment',
+            'date'
+        ]);
+
+        const csvWithBOM = '\uFEFF' + csv;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename=user_feedback.csv');
+        res.status(200).send(csvWithBOM);
+    } catch (err) {
+        console.error('exportFeedbackAnalysis error:', err);
         res.status(500).json({ message: err.message });
     }
 };

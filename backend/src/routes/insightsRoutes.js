@@ -8,7 +8,9 @@ import {
     flagGap,
     unflagGap,
     getDemand,
-    getEntities
+    getEntities,
+    getFeedbackAnalysis,
+    exportFeedbackAnalysis
 } from '../controllers/insightsController.js';
 
 const router = express.Router();
@@ -29,5 +31,7 @@ router.get('/gaps/queue', protect, adminOnly, getGapQueue);
 router.post('/gaps/:id/flag', protect, adminOnly, flagGap);
 router.delete('/gaps/queue/:id', protect, adminOnly, unflagGap);
 router.get('/demand', protect, adminOnly, getDemand);
+router.get('/feedback-analysis', protect, adminOnly, getFeedbackAnalysis);
+router.get('/feedback-analysis/export', protect, adminOnly, exportFeedbackAnalysis);
 
 export default router;

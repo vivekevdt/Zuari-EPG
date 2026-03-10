@@ -6,7 +6,7 @@ import ChatArea from '../components/ChatArea';
 import CalendarModal from '../components/CalendarModal';
 import OnboardingModal from '../components/OnboardingModal';
 import PeriodicFeedbackModal from '../components/PeriodicFeedbackModal';
-import { getConversations, getMessages, createConversation, sendMessage, deleteConversation, getAvailableEmployeePolicies, getDynamicFAQs, submitFeedback } from '../api';
+import { getConversations, getMessages, createConversation, sendMessage, deleteConversation, getAvailableEmployeePolicies, getDynamicFAQs, submitFeedback, submitGeneralFeedback } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 const EmployeeDashboard = () => {
@@ -89,11 +89,11 @@ const EmployeeDashboard = () => {
         localStorage.setItem(`feedback_completed_visit_${visits}_${userEmail}`, 'true');
 
         try {
-            await submitFeedback({
-                userQuestion: "Periodic Experience Rating",
-                aiResponse: `Rating: ${feedbackData.rating}/5. Success: ${feedbackData.successAreas.join(', ')}. Improve: ${feedbackData.improvementAreas.join(', ')}`,
-                thumbs: feedbackData.rating >= 4 ? 'up' : 'down',
-                description: feedbackData.suggestions || "No specific suggestions."
+            await submitGeneralFeedback({
+                rating: feedbackData.rating,
+                improvementAreas: feedbackData.improvementAreas,
+                successAreas: feedbackData.successAreas,
+                comment: feedbackData.suggestions || ''
             });
         } catch (error) {
             console.error("Failed to submit periodic feedback:", error);
@@ -118,7 +118,7 @@ const EmployeeDashboard = () => {
         document.documentElement.classList.toggle('dark');
         localStorage.setItem('zuari-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
     };
- 
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
@@ -193,8 +193,9 @@ const EmployeeDashboard = () => {
     };
 
     const sendMsgAPI = async (sessionId, content) => {
+        const tempId = Date.now().toString();
         const tempUserMsg = {
-            _id: Date.now().toString(),
+            _id: tempId,
             role: 'user',
             content,
             updatedAt: new Date().toISOString()
@@ -204,10 +205,14 @@ const EmployeeDashboard = () => {
 
         try {
             const response = await sendMessage(sessionId, content, selectedPolicyTitle);
-            const { botMessage } = response;
-            setMessages(prev => [...prev, botMessage]);
+            const { userMessage, botMessage } = response;
+
+            // Replace the temporary user message with the real one from backend (which has real _id)
+            setMessages(prev => prev.map(m => m._id === tempId ? userMessage : m).concat(botMessage));
         } catch (error) {
             console.error("Failed to send message:", error);
+            // Optionally remove the temp message on error
+            setMessages(prev => prev.filter(m => m._id !== tempId));
         } finally {
             setIsLoading(false);
         }
@@ -287,7 +292,7 @@ const EmployeeDashboard = () => {
                     onSelectPolicy={setSelectedPolicyTitle}
                     onOpenPoliciesModal={() => setIsPoliciesModalOpen(true)}
                 />
-            
+
 
                 <ChatArea
                     messages={messages}

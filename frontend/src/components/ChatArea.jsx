@@ -88,12 +88,12 @@ const ChatArea = ({
         onSendMessage(text);
     };
 
-    // Find the user question that precedes a given ai message index
-    const getRelatedQuestion = (msgIndex) => {
+    // Find the user message that precedes a given ai message index
+    const getRelatedUserMessage = (msgIndex) => {
         for (let i = msgIndex - 1; i >= 0; i--) {
-            if (messages[i].role === 'user') return messages[i].content || '';
+            if (messages[i].role === 'user') return messages[i];
         }
-        return '';
+        return null;
     };
 
     const handleThumb = async (msg, msgIndex, thumb) => {
@@ -103,13 +103,18 @@ const ChatArea = ({
 
         setFeedbackMap(prev => ({ ...prev, [msgId]: thumb }));
 
+        const userMsg = getRelatedUserMessage(msgIndex);
+        const queryId = userMsg?._id || userMsg?.id;
+        const responseId = msg._id || msg.id;
+
         if (thumb === 'down') {
-            const question = getRelatedQuestion(msgIndex);
-            setFeedbackModal({ msgId, question, answer: msg.content });
+            setFeedbackModal({ msgId, queryId, responseId, question: userMsg?.content || '', answer: msg.content });
         } else {
             try {
                 await submitFeedback({
-                    userQuestion: getRelatedQuestion(msgIndex),
+                    queryId,
+                    responseId,
+                    userQuestion: userMsg?.content || '',
                     aiResponse: msg.content,
                     thumbs: 'up',
                     description: ''
@@ -126,6 +131,8 @@ const ChatArea = ({
         if (!feedbackModal) return;
         try {
             await submitFeedback({
+                queryId: feedbackModal.queryId,
+                responseId: feedbackModal.responseId,
                 userQuestion: feedbackModal.question,
                 aiResponse: feedbackModal.answer,
                 thumbs: 'down',

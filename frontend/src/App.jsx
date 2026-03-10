@@ -17,6 +17,7 @@ import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminVectorDb from './pages/superadmin/SuperAdminVectorDb';
 import SuperAdminFeedbacks from './pages/superadmin/SuperAdminFeedbacks';
 import SuperAdminInteractions from './pages/superadmin/SuperAdminInteractions';
+import AdminFeedbackAnalysis from './pages/admin/AdminFeedbackAnalysis';
 import Playground from './pages/Playground';
 
 const SuperAdminRoute = ({ children }) => {
@@ -105,6 +106,7 @@ function App() {
           <Route path="config" element={<AdminConfig />} />
           <Route path="playground" element={<Playground />} />
           <Route path="insights" element={<AdminInsights />} />
+          <Route path="feedback-analysis" element={<AdminFeedbackAnalysis />} />
         </Route>
 
         {/* Super Admin Routes */}
