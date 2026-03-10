@@ -6,24 +6,82 @@ const AdminFeedbackAnalysis = () => {
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const result = await getInsightsFeedbackAnalysis();
-                setData(result);
-            } catch (error) {
-                console.error("Failed to fetch feedback analysis:", error);
-            } finally {
-                setLoading(false);
+    // Filters
+    const [searchQuery, setSearchQuery] = useState('');
+    const [entityFilter, setEntityFilter] = useState('all');
+    const [levelFilter, setLevelFilter] = useState('all');
+
+    // Metadata for options
+    const [availableEntities, setAvailableEntities] = useState([]);
+    const [availableLevels, setAvailableLevels] = useState([]);
+
+    const fetchData = async (isInitial = false) => {
+        if (isInitial) setLoading(true);
+        try {
+            const result = await getInsightsFeedbackAnalysis({
+                entity: entityFilter,
+                level: levelFilter,
+                search: searchQuery
+            });
+            setData(result);
+            if (result.filters) {
+                setAvailableEntities(result.filters.entities || []);
+                // Only update availableLevels if entityFilter is 'all' or if the entityFilter matches the current entity
+                // This ensures that when an entity is selected, we get levels specific to that entity.
+                // When entityFilter is 'all', we get all levels.
+                if (entityFilter === 'all' || result.filters.entities.includes(entityFilter)) {
+                    setAvailableLevels(result.filters.levels || []);
+                }
             }
-        };
-        fetchData();
+        } catch (error) {
+            console.error("Failed to fetch feedback analysis:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Initial load
+    useEffect(() => {
+        fetchData(true);
     }, []);
+
+    // When entity changes, we MUST fetch to get new levels
+    useEffect(() => {
+        // Reset level filter whenever entity filter changes
+        setLevelFilter('all');
+        // Fetch data to get new levels for the selected entity
+        // Debounce this fetch slightly to avoid rapid calls if user is quickly changing entities
+        const timer = setTimeout(() => {
+            fetchData();
+        }, 100); // Small debounce for entity changes
+
+        return () => clearTimeout(timer);
+    }, [entityFilter]); // Only re-run when entityFilter changes
+
+    const handleReset = () => {
+        setSearchQuery('');
+        setEntityFilter('all');
+        setLevelFilter('all');
+        // fetchData will be triggered by entityFilter change to 'all'
+    };
+
+    const handleQuery = () => {
+        // Debounce search slightly to avoid excessive API calls
+        const timer = setTimeout(() => {
+            fetchData();
+        }, searchQuery ? 500 : 0);
+
+        return () => clearTimeout(timer);
+    };
 
     const handleExport = async () => {
         setExporting(true);
         try {
-            await exportInsightsFeedbackAnalysisCSV();
+            await exportInsightsFeedbackAnalysisCSV({
+                entity: entityFilter,
+                level: levelFilter,
+                search: searchQuery
+            });
         } catch (error) {
             console.error("Export failed:", error);
             alert("Export failed: " + error.message);
@@ -49,11 +107,12 @@ const AdminFeedbackAnalysis = () => {
         );
     }
 
-    const { rating, ratingDelta, hotspots, suggestions } = data || {
+    const { rating, ratingDelta, hotspots, suggestions, filters } = data || {
         rating: '0.0',
         ratingDelta: '+0.0',
         hotspots: [],
-        suggestions: []
+        suggestions: [],
+        filters: { entities: [], levels: [] }
     };
 
     const activeEmojiIndex = Math.round(parseFloat(rating)) - 1;
@@ -142,11 +201,90 @@ const AdminFeedbackAnalysis = () => {
                 </div>
             </div>
 
-            {/* Employee Suggestions */}
             <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden border-b-4 border-b-blue-600">
-                <div className="p-8 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                    <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Specific Employee Suggestions</h2>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800">Latest 50 Responses</span>
+                <div className="p-8 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/10">
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
+                        <div>
+                            <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Specific Employee Suggestions</h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Filtering across all feedback data</p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4">
+                            {/* Entity Filter */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">1. Entity</label>
+                                <div className="relative">
+                                    <select
+                                        value={entityFilter}
+                                        onChange={(e) => setEntityFilter(e.target.value)}
+                                        className="pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-700 dark:text-slate-300 appearance-none min-w-[160px] shadow-sm"
+                                    >
+                                        <option value="all">All Entities</option>
+                                        {availableEntities.map(e => (
+                                            <option key={e} value={e}>{e}</option>
+                                        ))}
+                                    </select>
+                                    <svg className="w-3.5 h-3.5 absolute right-3.5 top-3 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+
+                            {/* Level Filter */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">2. Level</label>
+                                <div className="relative">
+                                    <select
+                                        value={levelFilter}
+                                        disabled={entityFilter === 'all'}
+                                        onChange={(e) => setLevelFilter(e.target.value)}
+                                        className={`pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-700 dark:text-slate-300 appearance-none min-w-[160px] shadow-sm ${entityFilter === 'all' ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                                    >
+                                        <option value="all">All Levels</option>
+                                        {availableLevels.map(l => (
+                                            <option key={l} value={l}>{l}</option>
+                                        ))}
+                                    </select>
+                                    <svg className="w-3.5 h-3.5 absolute right-3.5 top-3 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+
+                            {/* Name Search */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Name Search</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Type name..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all w-48 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 shadow-sm"
+                                    />
+                                    <svg className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 self-end mb-0.5">
+                                <button
+                                    onClick={handleQuery}
+                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md shadow-blue-200 dark:shadow-none active:scale-95"
+                                >
+                                    Search
+                                </button>
+                                <button
+                                    onClick={handleReset}
+                                    className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+
+                            <div className="self-end mb-2 ml-2">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
+                                    {suggestions.length} Results
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div className="max-h-[650px] overflow-y-auto custom-scrollbar divide-y divide-slate-100 dark:divide-slate-700">
                     {suggestions.length > 0 ? suggestions.map((suggestion) => {

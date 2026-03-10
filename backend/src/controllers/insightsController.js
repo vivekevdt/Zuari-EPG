@@ -7,6 +7,7 @@ import Entity from '../models/Entity.js';
 import MessageThemeLog from '../models/MessageThemeLog.js';
 import QuestionTheme from '../models/QuestionTheme.js';
 import UserFeedback from '../models/UserFeedback.js';
+import ImpactLevel from '../models/ImpactLevel.js';
 
 import aiService from '../services/aiService.js';
 import DemandCache from '../models/DemandCache.js';
@@ -397,15 +398,28 @@ export const getDemand = async (req, res) => {
 
 export const getFeedbackAnalysis = async (req, res) => {
     try {
+        const { entity, level, search } = req.query;
         const now = new Date();
         const startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 30);
         const prevStart = new Date(startDate);
         prevStart.setDate(prevStart.getDate() - 30);
 
+        // Build filters
+        const baseFilter = {};
+        if (entity && entity !== 'all') baseFilter.userEntity = entity;
+        if (level && level !== 'all') baseFilter.userImpactLevel = level;
+
         // 1. Overall Experience (Rating)
-        const currentFeedbacks = await UserFeedback.find({ createdAt: { $gte: startDate, $lte: now } }).select('rating').lean();
-        const prevFeedbacks = await UserFeedback.find({ createdAt: { $gte: prevStart, $lt: startDate } }).select('rating').lean();
+        const currentFeedbacks = await UserFeedback.find({
+            ...baseFilter,
+            createdAt: { $gte: startDate, $lte: now }
+        }).select('rating').lean();
+
+        const prevFeedbacks = await UserFeedback.find({
+            ...baseFilter,
+            createdAt: { $gte: prevStart, $lt: startDate }
+        }).select('rating').lean();
 
         const avgRating = currentFeedbacks.length > 0
             ? (currentFeedbacks.reduce((sum, f) => sum + f.rating, 0) / currentFeedbacks.length)
@@ -420,13 +434,19 @@ export const getFeedbackAnalysis = async (req, res) => {
 
         // 2. Improvement Hotspots (Aggregate improvementAreas)
         const hotspotsAgg = await UserFeedback.aggregate([
-            { $match: { createdAt: { $gte: startDate, $lte: now } } },
+            {
+                $match: {
+                    ...baseFilter,
+                    createdAt: { $gte: startDate, $lte: now }
+                }
+            },
             { $unwind: '$improvementAreas' },
             { $group: { _id: '$improvementAreas', count: { $sum: 1 } } },
             { $sort: { count: -1 } }
         ]);
 
         const totalFeedbackWithImprovement = await UserFeedback.countDocuments({
+            ...baseFilter,
             createdAt: { $gte: startDate, $lte: now },
             'improvementAreas.0': { $exists: true }
         });
@@ -437,12 +457,33 @@ export const getFeedbackAnalysis = async (req, res) => {
             count: h.count
         }));
 
-        // 3. Employee Suggestions (Recent feedbacks with comments)
-        const suggestions = await UserFeedback.find({ comment: { $ne: '' } })
+        // 3. Employee Suggestions (Filtered by entity, level, and search)
+        const suggestionFilter = {
+            ...baseFilter,
+            comment: { $ne: '' }
+        };
+        if (search) {
+            suggestionFilter.userName = { $regex: search, $options: 'i' };
+        }
+
+        const suggestions = await UserFeedback.find(suggestionFilter)
             .sort({ createdAt: -1 })
-            .limit(50)
+            .limit(100) // Increased limit since it might be filtered
             .select('userName comment rating category createdAt improvementAreas successAreas userEntity userImpactLevel')
             .lean();
+
+        // 4. Metadata for Filters (Unique Entities and Levels across the actual collections)
+        const allEntitiesRaw = await Entity.find({}).select('name').lean();
+        const entities = allEntitiesRaw.map(e => e.name).sort();
+
+        let levels = [];
+        if (entity && entity !== 'all') {
+            const entityDoc = await Entity.findOne({ name: entity }).lean();
+            if (entityDoc) {
+                const levelsRaw = await ImpactLevel.find({ entity: entityDoc._id }).select('name').lean();
+                levels = levelsRaw.map(l => l.name).sort();
+            }
+        }
 
         res.json({
             data: {
@@ -460,7 +501,11 @@ export const getFeedbackAnalysis = async (req, res) => {
                     successAreas: s.successAreas,
                     entity: s.userEntity,
                     level: s.userImpactLevel
-                }))
+                })),
+                filters: {
+                    entities,
+                    levels
+                }
             }
         });
     } catch (err) {
@@ -471,20 +516,17 @@ export const getFeedbackAnalysis = async (req, res) => {
 
 export const exportFeedbackAnalysis = async (req, res) => {
     try {
-        const feedbacks = await UserFeedback.find({}).sort({ createdAt: -1 }).lean();
+        const { entity, level, search } = req.query;
 
-        const headers = [
-            'userName',
-            'userEmail',
-            'userEntity',
-            'userImpactLevel',
-            'rating',
-            'category',
-            'improvementAreas',
-            'successAreas',
-            'comment',
-            'createdAt'
-        ];
+        // Build filters
+        const filter = {};
+        if (entity && entity !== 'all') filter.userEntity = entity;
+        if (level && level !== 'all') filter.userImpactLevel = level;
+        if (search) {
+            filter.userName = { $regex: search, $options: 'i' };
+        }
+
+        const feedbacks = await UserFeedback.find(filter).sort({ createdAt: -1 }).lean();
 
         // Format data for CSV (especially arrays and dates)
         const formattedData = feedbacks.map(f => {

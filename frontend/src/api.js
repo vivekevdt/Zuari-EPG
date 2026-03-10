@@ -888,26 +888,26 @@ export const getInsightsDemand = async ({ entity = 'all', period = '30' } = {}) 
     return data.data;
 };
 
-export const getInsightsFeedbackAnalysis = async () => {
-    const res = await fetch(`${API_URL}/api/admin/insights/feedback-analysis`, { headers: getAuthHeaders() });
+export const getInsightsFeedbackAnalysis = async ({ entity = 'all', level = 'all', search = '' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/feedback-analysis?entity=${entity}&level=${level}&search=${search}`, { headers: getAuthHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to fetch feedback analysis');
     return data.data;
 };
 
-export const exportInsightsFeedbackAnalysisCSV = async () => {
-    const res = await fetch(`${API_URL}/api/admin/insights/feedback-analysis/export`, { headers: getAuthHeaders() });
+export const exportInsightsFeedbackAnalysisCSV = async ({ entity = 'all', level = 'all', search = '' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/feedback-analysis/export?entity=${entity}&level=${level}&search=${search}`, { headers: getAuthHeaders() });
     if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || 'Failed to export feedback analysis');
+        throw new Error(data.message || 'Failed to export CSV');
     }
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'user_feedback.csv';
+    a.download = `user_feedback_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
-    a.remove();
     window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
 };

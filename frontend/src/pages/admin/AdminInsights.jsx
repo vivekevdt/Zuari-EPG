@@ -252,23 +252,54 @@ const AdminInsights = () => {
                                 </div>
                                 {adoption.dailyVolume?.length > 0 ? (
                                     <>
-                                        <div className="flex items-end gap-1 h-16 mb-2">
+                                        <div className="h-40 relative flex items-end gap-2 mb-4 px-1">
+                                            {/* Background Grid Lines for a premium feel */}
+                                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-[0.03] dark:opacity-[0.07]">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <div key={i} className="w-full h-px bg-slate-900 dark:bg-white" />
+                                                ))}
+                                            </div>
+
+                                            {/* Bars */}
                                             {adoption.dailyVolume.map((d, i) => {
                                                 const maxVal = Math.max(...adoption.dailyVolume.map(x => x.count), 1);
-                                                const h = d.count === 0 ? 2 : Math.round((d.count / maxVal) * 56) + 4;
+                                                const h = d.count === 0 ? 4 : Math.round((d.count / maxVal) * 150) + 6;
                                                 const isToday = i === adoption.dailyVolume.length - 1;
+
                                                 return (
-                                                    <div key={i} className="flex-1 flex flex-col items-center gap-1" title={`${d.count} queries`}>
-                                                        <div style={{ height: h }} className={`w-full rounded-t-md transition-all ${isToday ? 'bg-slate-200 dark:bg-slate-600' : 'bg-blue-500 dark:bg-blue-600'}`}></div>
+                                                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                                                        {/* Tooltip on Hover */}
+                                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-10 shadow-xl border border-slate-700 dark:border-slate-200 translate-y-2 group-hover:translate-y-0 uppercase tracking-widest">
+                                                            {d.count} queries
+                                                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 dark:bg-white rotate-45 border-r border-b border-slate-700 dark:border-slate-200"></div>
+                                                        </div>
+
+                                                        {/* Bar with Gradient and Animation */}
+                                                        <div
+                                                            style={{ height: `${h}px`, animationDelay: `${i * 0.05}s` }}
+                                                            className={`w-full rounded-t-lg transition-all duration-300 relative overflow-hidden group-hover:brightness-110 group-hover:shadow-lg group-hover:shadow-blue-500/20 animate-grow ${isToday
+                                                                    ? 'bg-slate-200 dark:bg-slate-700 border-2 border-dashed border-slate-300 dark:border-slate-600'
+                                                                    : 'bg-gradient-to-t from-blue-600 via-blue-500 to-blue-400 dark:from-blue-700 dark:via-blue-600 dark:to-blue-500'
+                                                                }`}
+                                                        >
+                                                            {/* Subtle reflection effect for premium look */}
+                                                            <div className="absolute top-0 left-0 w-full h-[50%] bg-white/10 opacity-20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                        <div className="flex">
-                                            {adoption.dailyVolume.map((d, i) => <div key={i} className="flex-1 text-center text-[9px] text-slate-400">{d.day}</div>)}
+                                        <div className="flex mt-2">
+                                            {adoption.dailyVolume.map((d, i) => (
+                                                <div key={i} className="flex-1 text-center font-black text-[9px] text-slate-400 uppercase tracking-widest leading-none">
+                                                    {d.day}
+                                                </div>
+                                            ))}
                                         </div>
                                     </>
-                                ) : <p className="text-xs text-slate-400 py-6 text-center">No query data for this period.</p>}
+                                ) : (
+                                    <p className="text-xs text-slate-400 py-12 text-center italic">No query data for this period.</p>
+                                )}
 
                                 {adoption.byLevel?.length > 0 && (
                                     <div className="mt-5 space-y-2">
@@ -429,7 +460,6 @@ const AdminInsights = () => {
                             );
                         })}
                     </div>
-
                 )}
             </section>
 
