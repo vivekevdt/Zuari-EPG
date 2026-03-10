@@ -147,6 +147,7 @@ const AdminInsights = () => {
 
     const flaggedFeedbackIds = new Set(queue.map(q => String(q.feedbackId)));
     const filteredGaps = gapFilter === 'all' ? gaps : gaps.filter(g => g.type === gapFilter);
+    const visibleThemes = themes.filter(t => t.currentCount > 0);
 
     const periodLabel = period === '90' ? 'vs prior 90 days' : period === 'year' ? 'vs prior year' : 'vs prior 30 days';
 
@@ -339,11 +340,11 @@ const AdminInsights = () => {
                 <div className="flex items-center justify-between mb-5">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">02 — Question Themes</span>
                 </div>
-                {loadingThemes ? <Spinner /> : themes.length === 0 ? (
+                {loadingThemes ? <Spinner /> : visibleThemes.length === 0 ? (
                     <EmptyState icon="🔍" title="No themes yet" desc="Themes are derived from employee questions. Send a few messages to see them here." hint="💡 Typically visible after ~20 conversations." />
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {themes.map(t => {
+                        {visibleThemes.map(t => {
                             const delta = t.currentCount - t.prevCount;
                             const deltaAbs = Math.abs(delta);
                             const hasActivity = t.currentCount > 0 || t.prevCount > 0;
