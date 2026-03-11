@@ -6,7 +6,6 @@ import MessageThemeLog from '../models/MessageThemeLog.js';
 import User from '../models/User.js';
 import QuestionTheme from '../models/QuestionTheme.js';
 import { classifyAndRecord } from '../services/themeService.js';
-import aiService from '../services/aiService.js';
 
 const run = async () => {
     await connectDB();
@@ -41,22 +40,6 @@ const run = async () => {
                 entityName: user.entity || '',
                 levelName: user.level || ''
             });
-
-            // Calculate & Update confidence score for the corresponding AI response
-            // BUT save it on the USER message so the insights UI can read it mapping correctly.
-            const aiResponseMsg = await Message.findOne({
-                conversationId: msg.conversationId,
-                role: 'ai',
-                createdAt: { $gt: msg.createdAt }
-            }).sort({ createdAt: 1 });
-
-
-            if (aiResponseMsg && !msg.confidenceScore) {
-                const confidence = await aiService.evaluateResponseQuality(msg.content, aiResponseMsg.content);
-                msg.confidenceScore = confidence;
-                await Message.updateOne({ _id: msg._id }, { $set: { confidenceScore: confidence } });
-                console.log(`  -> Evaluated AI Response Confidence: ${confidence}%. Saved to User Message.`);
-            }
 
             count++;
         } catch (err) {
