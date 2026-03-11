@@ -150,13 +150,12 @@ const AdminFeedbackAnalysis = () => {
             {/* Top Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
                 {/* Overall Experience */}
-                <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 p-8 shadow-sm flex flex-col items-center justify-center relative overflow-hidden h-[340px]">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20"></div>
+                <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col items-center justify-center relative">
 
-                    <label className="text-sm font-black text-slate-400 uppercase tracking-widest mb-10 text-center w-full">Overall Experience</label>
-                    <div className="flex justify-center gap-4 w-full mb-10">
+                    <label className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 text-center w-full">Overall Experience</label>
+                    <div className="flex justify-center gap-2 sm:gap-4 w-full mb-6 flex-wrap">
                         {['😡', '😕', '😐', '😊', '😍'].map((emoji, i) => (
-                            <span key={i} className={`text-4xl transition-all duration-300 ${i === activeEmojiIndex ? 'grayscale-0 scale-125 saturate-150 drop-shadow-md' : 'grayscale opacity-25'}`}>
+                            <span key={i} className={`text-3xl sm:text-4xl lg:text-5xl transition-all duration-300 ${i === activeEmojiIndex ? 'grayscale-0 scale-125 saturate-150 drop-shadow-md z-10' : 'grayscale opacity-25'}`}>
                                 {emoji}
                             </span>
                         ))}
@@ -172,9 +171,9 @@ const AdminFeedbackAnalysis = () => {
                 </div>
 
                 {/* Improvement Hotspots */}
-                <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 p-8 shadow-sm min-h-[340px]">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-8">Improvement Hotspots</label>
-                    <div className="space-y-6">
+                <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-6">Improvement Hotspots</label>
+                    <div className="space-y-4">
                         {hotspots.length > 0 ? hotspots.map((item, idx) => {
                             const colors = ['bg-rose-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500'];
                             return (
@@ -201,7 +200,7 @@ const AdminFeedbackAnalysis = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden border-b-4 border-b-blue-600">
+            <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden border-b-4">
                 <div className="p-8 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/10">
                     <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
                         <div>
@@ -286,70 +285,100 @@ const AdminFeedbackAnalysis = () => {
                         </div>
                     </div>
                 </div>
-                <div className="max-h-[650px] overflow-y-auto custom-scrollbar divide-y divide-slate-100 dark:divide-slate-700">
-                    {suggestions.length > 0 ? suggestions.map((suggestion) => {
-                        const dateObj = new Date(suggestion.date);
-                        const dateStr = dateObj.toLocaleDateString();
-                        const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                <div className="max-h-[650px] overflow-x-auto overflow-y-auto custom-scrollbar bg-white dark:bg-slate-800 rounded-b-[32px]">
+                    {suggestions.length > 0 ? (
+                        <table className="w-full text-left border-collapse min-w-[1000px]">
+                            <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <th className="py-4 px-6 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest w-20 text-center">Rating</th>
+                                    <th className="py-4 px-6 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest w-40">User / Entity</th>
+                                    <th className="py-4 px-6 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest w-24">Impact Level</th>
+                                    <th className="py-4 px-6 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Feedback / Quote</th>
+                                    <th className="py-4 px-6 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest w-48">What went well</th>
+                                    <th className="py-4 px-6 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest w-48">What needs work</th>
+                                    <th className="py-4 px-6 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest w-32 text-right">Date / Time</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {suggestions.map((suggestion) => {
+                                    const dateObj = new Date(suggestion.date);
+                                    const dateStr = dateObj.toLocaleDateString();
+                                    const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                        return (
-                            <div key={suggestion.id} className="p-5 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-all flex items-start gap-4 group">
-                                <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-slate-200/50 flex-shrink-0">
-                                    {getEmojiIcon(suggestion.rating)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs font-black text-slate-900 dark:text-white tracking-widest uppercase">{suggestion.user || 'Anonymous'}</span>
-                                            {suggestion.entity && (
-                                                <span className="text-[8px] font-black text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 uppercase tracking-widest leading-normal">
-                                                    {suggestion.entity}
-                                                </span>
-                                            )}
-                                            {suggestion.level && (
-                                                <span className="text-[8px] font-black text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 uppercase tracking-widest leading-normal">
-                                                    {suggestion.level}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="flex items-center gap-1.5 text-slate-400">
-                                                <span className="text-[10px] font-bold">{dateStr}</span>
-                                                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                                <span className="text-[10px] font-bold">{timeStr}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed italic pr-12 mb-3">
-                                        "{suggestion.text}"
-                                    </p>
+                                    return (
+                                        <tr key={suggestion.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-all group">
+                                            {/* Rating */}
+                                            <td className="py-4 px-6 align-top text-center">
+                                                <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 inline-flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-slate-200/50">
+                                                    {getEmojiIcon(suggestion.rating)}
+                                                </div>
+                                            </td>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                        {suggestion.successAreas && suggestion.successAreas.length > 0 && (
-                                            <div>
-                                                <label className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.2em] block mb-1.5">What we are doing well</label>
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {suggestion.successAreas.map(tag => (
-                                                        <span key={tag} className="text-[8px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 px-2 py-0.5 rounded-md uppercase tracking-wider">{tag}</span>
-                                                    ))}
+                                            {/* User & Context */}
+                                            <td className="py-4 px-6 align-top">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <span className="text-sm font-black text-slate-900 dark:text-white tracking-widest uppercase truncate">{suggestion.user || 'Anonymous'}</span>
+                                                    {suggestion.entity && (
+                                                        <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest w-fit line-clamp-2">
+                                                            {suggestion.entity}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        )}
-                                        {suggestion.improvementAreas && suggestion.improvementAreas.length > 0 && (
-                                            <div>
-                                                <label className="text-[8px] font-black text-rose-500 uppercase tracking-[0.2em] block mb-1.5">What we can improve</label>
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {suggestion.improvementAreas.map(tag => (
-                                                        <span key={tag} className="text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/50 px-2 py-0.5 rounded-md uppercase tracking-wider">{tag}</span>
-                                                    ))}
+                                            </td>
+
+                                            {/* Impact Level */}
+                                            <td className="py-4 px-6 align-top">
+                                                {suggestion.level ? (
+                                                    <span className="text-[9px] font-black text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-800/50 uppercase tracking-widest inline-block text-center min-w-[40px]">
+                                                        {suggestion.level}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">N/A</span>
+                                                )}
+                                            </td>
+
+                                            {/* Quote */}
+                                            <td className="py-4 px-6 align-top">
+                                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed italic pr-4 break-words">
+                                                    "{suggestion.text}"
+                                                </p>
+                                            </td>
+
+                                            {/* Doing Well */}
+                                            <td className="py-4 px-6 align-top">
+                                                {suggestion.successAreas && suggestion.successAreas.length > 0 && (
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {suggestion.successAreas.map(tag => (
+                                                            <span key={tag} className="text-[9px] font-black w-fit text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 px-2 py-1 rounded-md uppercase tracking-widest">{tag}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </td>
+
+                                            {/* Improve */}
+                                            <td className="py-4 px-6 align-top">
+                                                {suggestion.improvementAreas && suggestion.improvementAreas.length > 0 && (
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {suggestion.improvementAreas.map(tag => (
+                                                            <span key={tag} className="text-[9px] font-black w-fit text-rose-500 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/50 px-2 py-1 rounded-md uppercase tracking-widest">{tag}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </td>
+
+                                            {/* Date/Time */}
+                                            <td className="py-4 px-6 align-top text-right">
+                                                <div className="flex justify-end gap-1.5 text-slate-500 dark:text-slate-400 flex-col">
+                                                    <span className="text-[10px] font-black tracking-wider uppercase">{dateStr}</span>
+                                                    <span className="text-[10px] font-bold">{timeStr}</span>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    }) : (
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    ) : (
                         <div className="p-12 text-center text-slate-400 italic">No suggestions submitted recently.</div>
                     )}
                 </div>

@@ -7,12 +7,13 @@ const run = async () => {
     await QuestionTheme.deleteMany({});
     console.log('Cleared old QuestionTheme records');
 
-    for (const name of PREDEFINED_THEMES) {
-        await QuestionTheme.findOneAndUpdate(
-            { name },
-            { name, isPredefined: true },
-            { upsert: true, setDefaultsOnInsert: true }
-        );
+    for (const theme of PREDEFINED_THEMES) {
+        await QuestionTheme.create({
+            name: theme.name,
+            description: theme.description,
+            exampleQueries: theme.exampleQueries,
+            isPredefined: true
+        });
     }
     console.log(`✅ Seeded ${PREDEFINED_THEMES.length} predefined question categories`);
     const all = await QuestionTheme.find({}).lean();

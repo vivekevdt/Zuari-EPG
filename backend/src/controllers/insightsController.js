@@ -52,6 +52,7 @@ const getUserIdsByEntity = async (entityName) => {
 export const getAdoption = async (req, res) => {
     try {
         const { entity, period } = req.query;
+
         const { startDate, prevStart, now } = getPeriodRange(period);
 
         // Build user ID list if entity filter is applied
@@ -72,7 +73,6 @@ export const getAdoption = async (req, res) => {
             ...userIdFilter,
             createdAt: { $gte: startDate, $lte: now }
         });
-        console.log('Unresolved Queries:', unresolvedQueries);
         const prevUnresolvedQueries = await Message.countDocuments({
             role: 'ai',
             content: { $regex: /not covered/i },
@@ -118,26 +118,35 @@ export const getAdoption = async (req, res) => {
             last7Days.push({ day: dayNames[dayStart.getDay()], count });
         }
 
-        // Policy access (staying the same)
-        const themeLogs = await MessageThemeLog.aggregate([
-            { $match: { createdAt: { $gte: startDate, $lte: now } } },
-            { $group: { _id: '$themeName', count: { $sum: 1 } } }
-        ]);
-        const themeToPolicy = {
-            'Business Travel Approval & Booking': 'Travel Policy', 'Travel Expense Reimbursement': 'Travel Policy', 'Per Diem & Daily Allowance': 'Travel Policy',
-            'Leave Application & Approval': 'Leave and Holiday Policy', 'Leave Balance & Entitlement': 'Leave and Holiday Policy', 'Leave Carry Forward & Encashment': 'Leave and Holiday Policy', 'Holiday Calendar & Optional Holidays': 'Leave and Holiday Policy', 'Maternity, Paternity & Special Leaves': 'Leave and Holiday Policy',
-            'Health Insurance Coverage & Benefits': 'Health Insurance Policy', 'Medical Claim & Reimbursement Process': 'Health Insurance Policy', 'Cashless Treatment & Network Hospitals': 'Health Insurance Policy', 'Dependent Coverage (Family Members)': 'Health Insurance Policy',
-            'Car Lease Eligibility & Entitlement': 'Car Lease Policy', 'Car Lease Application Process': 'Car Lease Policy',
-            'Working Hours, Shifts & Attendance': 'Working Hour Policy', 'Work from Home & Flexi Policy': 'Working Hour Policy', 'Overtime & Compensatory Off': 'Working Hour Policy',
-            'Team Events & Departmental Budget': 'Departmental Get-together Policy'
+        // Policy access (Aggregated from Message policyName field)
+        const policyAggregationMatch = {
+            role: 'ai',
+            createdAt: { $gte: startDate, $lte: now }
         };
-        const policyCounts = {}; let totalThemeQueries = 0;
-        themeLogs.forEach(log => {
-            const policyName = themeToPolicy[log._id] || 'Other Policies';
-            policyCounts[policyName] = (policyCounts[policyName] || 0) + log.count;
-            totalThemeQueries += log.count;
-        });
-        const policyAccess = Object.entries(policyCounts).map(([name, count]) => ({ name, count, percentage: totalThemeQueries ? Math.round((count / totalThemeQueries) * 100) : 0 })).sort((a, b) => b.count - a.count);
+        if (entityUserIds) {
+            policyAggregationMatch.userId = { $in: entityUserIds };
+        }
+
+        const policyLogs = await Message.aggregate([
+            { $match: policyAggregationMatch },
+            { $group: { _id: { $ifNull: ['$policyName', 'Other'] }, count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+        ]);
+
+        const totalPolicyQueries = policyLogs.reduce((acc, curr) => acc + curr.count, 0);
+
+        let policyAccess = policyLogs.map(log => ({
+            name: log._id,
+            count: log.count,
+            percentage: totalPolicyQueries ? Math.round((log.count / totalPolicyQueries) * 100) : 0
+        }));
+
+        // Move "Other" to the end if it exists
+        const otherIndex = policyAccess.findIndex(p => p.name === 'Other');
+        if (otherIndex !== -1) {
+            const [otherPolicy] = policyAccess.splice(otherIndex, 1);
+            policyAccess.push(otherPolicy);
+        }
 
         const delta = (curr, prev) => {
             if (prev === 0) return { type: 'neutral', value: 0 }; // Show 0% if no previous data
@@ -182,219 +191,125 @@ export const getEntities = async (req, res) => {
     }
 };
 
-// ── GET /insights/themes — powered by Gemini classification + MessageThemeLog ─
-export const getThemes = async (req, res) => {
+// ── GET /insights/thematic-clusters ──────────────────────────────────────────
+export const getThematicClusters = async (req, res) => {
     try {
         const { entity, period } = req.query;
-        const { startDate, prevStart, now } = getPeriodRange(period);
 
-        // Entity filter for MessageThemeLog
+        const { startDate, now } = getPeriodRange(period);
+     
+
+        // Entity filter for User/MessageThemeLog
         const entityUserIds = await getUserIdsByEntity(entity);
         const entityFilter = entityUserIds ? { userId: { $in: entityUserIds } } : {};
 
-        // Current period: [startDate → now]
-        const currAgg = await MessageThemeLog.aggregate([
-            { $match: { createdAt: { $gte: startDate, $lte: now }, ...entityFilter } },
-            { $group: { _id: '$themeId', count: { $sum: 1 }, themeName: { $first: '$themeName' }, sample: { $first: '$question' } } },
-            { $sort: { count: -1 } }
-        ]);
-
-        // Previous period: [prevStart → startDate]
-        const prevAgg = await MessageThemeLog.aggregate([
-            { $match: { createdAt: { $gte: prevStart, $lt: startDate }, ...entityFilter } },
-            { $group: { _id: '$themeId', count: { $sum: 1 }, themeName: { $first: '$themeName' } } }
-        ]);
-
-        const prevMap = Object.fromEntries(prevAgg.map(x => [x._id.toString(), x.count]));
-        const maxCount = currAgg.length > 0 ? currAgg[0].count : 1;
-
-        // All predefined themes (show even if 0 questions)
-        const allPredefined = await QuestionTheme.find({ isPredefined: true }).lean();
-        const presentIds = new Set(currAgg.map(x => x._id.toString()));
-        const predefinedWithZero = allPredefined
-            .filter(t => !presentIds.has(t._id.toString()))
-            .map(t => ({ _id: t._id, count: 0, themeName: t.name, sample: '' }));
-
-        const combined = [...currAgg, ...predefinedWithZero];
-
-        const themes = combined.map(t => {
-            const id = t._id.toString();
-            const currentCount = t.count;
-            const prevCount = prevMap[id] || 0;
-            let trend = 'stable';
-            if (currentCount > prevCount + 1) trend = 'up';
-            else if (prevCount > currentCount + 1) trend = 'down';
-            return {
-                name: t.themeName,
-                policy: t.themeName,
-                count: currentCount,          // Total in current period (shown in card header)
-                currentCount,                  // Explicit alias
-                prevCount,                     // Previous equivalent period count
-                pct: maxCount > 0 ? Math.round((currentCount / maxCount) * 100) : 0,
-                sample: t.sample ? `"${t.sample.substring(0, 100)}"` : '',
-                trend
-            };
-        });
-
-        res.json({ data: themes });
-    } catch (err) {
-        console.error('getThemes error:', err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-
-
-// ── GET /insights/gaps ────────────────────────────────────────────────────────
-export const getGaps = async (req, res) => {
-    try {
-        const { entity, period, type } = req.query;
-        const { startDate, now } = getPeriodRange(period);
-
-        const filter = {
-            thumbs: 'down',
-            createdAt: { $gte: startDate, $lte: now }
-        };
-        if (entity && entity !== 'all') filter.userEntity = entity;
-
-        const gaps = await QueryFeedback.find(filter)
-            .sort({ createdAt: -1 })
-            .select('_id userQuestion userEntity userImpactLevel createdAt')
-            .lean();
-
-        // Map to privacy-safe shape
-        const result = gaps.map(g => ({
-            id: g._id,
-            type: 'unhelpful',
-            question: g.userQuestion,
-            entity: g.userEntity || 'Unknown',
-            level: g.userImpactLevel || 'Unknown',
-            count: 1,
-            createdAt: g.createdAt
-        }));
-
-        res.json({ data: result });
-    } catch (err) {
-        console.error('getGaps error:', err);
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// ── GET /insights/gaps/queue ──────────────────────────────────────────────────
-export const getGapQueue = async (req, res) => {
-    try {
-        const queue = await InsightFlag.find({ flaggedBy: req.user._id })
-            .sort({ createdAt: -1 })
-            .lean();
-        res.json({ data: queue });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// ── POST /insights/gaps/:id/flag ──────────────────────────────────────────────
-export const flagGap = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { question, policy, entity, level } = req.body;
-
-        // Upsert — silently skip if already flagged by this admin
-        const flag = await InsightFlag.findOneAndUpdate(
-            { feedbackId: id, flaggedBy: req.user._id },
-            { feedbackId: id, flaggedBy: req.user._id, question, policy, entity, level },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-        res.json({ data: flag });
-    } catch (err) {
-        if (err.code === 11000) return res.json({ data: { alreadyFlagged: true } });
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// ── DELETE /insights/gaps/queue/:id ──────────────────────────────────────────
-export const unflagGap = async (req, res) => {
-    try {
-        const { id } = req.params;
-        await InsightFlag.findOneAndDelete({ _id: id, flaggedBy: req.user._id });
-        res.json({ data: { success: true } });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// ── GET /insights/demand ──────────────────────────────────────────────────────
-export const getDemand = async (req, res) => {
-    try {
-        const { entity, period } = req.query;
-        const { startDate, now } = getPeriodRange(period);
-
-        const filter = {
-            thumbs: 'down',
-            createdAt: { $gte: startDate, $lte: now }
-        };
-        if (entity && entity !== 'all') filter.userEntity = entity;
-
-        const feedbackCount = await QueryFeedback.countDocuments(filter);
-
-        if (feedbackCount === 0) {
-            return res.json({ data: [] });
-        }
-
-        // 1. Check Cache first
-        const cacheEntry = await DemandCache.findOne({
-            entity: entity || 'all',
-            period: period || '30',
-            feedbackCount
+        // 1. Fetch all theme logs across all time (period filter removed)
+        const logs = await MessageThemeLog.find({
+            ...entityFilter
         }).lean();
 
-        if (cacheEntry) {
-            return res.json({ data: cacheEntry.clusters });
+        if (logs.length === 0) {
+            return res.json({ data: { resolved: [], gaps: [] } });
         }
 
+        // 2. Identify conversations that had an AI fallback ("not covered")
+        const conversationIds = [...new Set(logs.map(l => l.conversationId))];
+        const gapConversations = await Message.find({
+            conversationId: { $in: conversationIds },
+            role: 'ai',
+            content: { $regex: /not covered/i }
+        }).select('conversationId').lean();
 
-        // 2. Fetch fresh data if cache miss
-        const feedbacks = await QueryFeedback.find(filter)
-            .select('userQuestion userEntity userImpactLevel userCategory')
-            .lean();
+        const gapConvSet = new Set(gapConversations.map(m => m.conversationId.toString()));
 
-        const questions = feedbacks.map(f => f.userQuestion);
-        const clusters = await aiService.clusterDemandGaps(questions);
+        // 3. Categorize logs into clusters
+        const clustersMap = {}; // themeName -> { resolved: [], gaps: [] }
 
-        // 3. Map clusters with entity/level details
-        const demand = clusters.map(cluster => {
-            const segments = new Set();
-            let count = 0;
+        for (const log of logs) {
+            if (!clustersMap[log.themeName]) {
+                clustersMap[log.themeName] = { resolved: [], gaps: [] };
+            }
+            const isGap = gapConvSet.has(log.conversationId.toString());
+            if (isGap) {
+                clustersMap[log.themeName].gaps.push(log.question);
+            } else {
+                clustersMap[log.themeName].resolved.push(log.question);
+            }
+        }
 
-            (cluster.indices || []).forEach(idx => {
-                const f = feedbacks[idx];
-                if (!f) return;
-                count++;
-                if (f.userEntity) segments.add(f.userEntity);
-                if (f.userImpactLevel) segments.add(f.userImpactLevel);
-            });
+        // 4. Format into output arrays
+        const resolvedArray = [];
+        const gapsArray = [];
+        let totalResolved = 0;
+        let totalGaps = 0;
 
-            return {
-                theme: cluster.theme,
-                count: count || cluster.samples.length,
-                strength: count >= 5 ? 'high' : count >= 3 ? 'medium' : 'low',
-                samples: cluster.samples,
-                segments: [...segments]
+        for (const [themeName, data] of Object.entries(clustersMap)) {
+            const resolvedCount = data.resolved.length;
+            const gapsCount = data.gaps.length;
+            totalResolved += resolvedCount;
+            totalGaps += gapsCount;
+
+            const fetchSampleDetails = async (questions) => {
+                const sampleQuestions = [...new Set(questions)].slice(0, 5);
+                const sampleDetails = [];
+                for (const q of sampleQuestions) {
+                    const log = logs.find(l => l.question === q && l.themeName === themeName);
+                    if (log) {
+                        const userMsg = await Message.findById(log.messageId).select('createdAt').lean();
+                        let aiMsg = null;
+                        if (userMsg) {
+                            aiMsg = await Message.findOne({
+                                conversationId: log.conversationId,
+                                role: 'ai',
+                                createdAt: { $gt: userMsg.createdAt }
+                            }).sort({ createdAt: 1 }).lean();
+                        }
+                        sampleDetails.push({
+                            question: q,
+                            response: aiMsg ? aiMsg.content : "N/A"
+                        });
+                    }
+                }
+                return sampleDetails;
             };
-        }).sort((a, b) => b.count - a.count);
 
-        // 4. Update Cache (upsert)
-        await DemandCache.findOneAndUpdate(
-            { entity: entity || 'all', period: period || '30' },
-            { entity: entity || 'all', period: period || '30', feedbackCount, clusters: demand },
-            { upsert: true, new: true }
-        );
+            if (resolvedCount > 0) {
+                resolvedArray.push({
+                    name: themeName,
+                    count: resolvedCount,
+                    samples: await fetchSampleDetails(data.resolved)
+                });
+            }
+            if (gapsCount > 0) {
+                gapsArray.push({
+                    name: themeName,
+                    count: gapsCount,
+                    samples: await fetchSampleDetails(data.gaps)
+                });
+            }
+        }
 
-        res.json({ data: demand });
+        // Calculate percentages
+        resolvedArray.forEach(c => c.percentage = totalResolved > 0 ? Math.round((c.count / totalResolved) * 100) : 0);
+        gapsArray.forEach(c => c.percentage = totalGaps > 0 ? Math.round((c.count / totalGaps) * 100) : 0);
+
+        // Sort by count descending
+        resolvedArray.sort((a, b) => b.count - a.count);
+        gapsArray.sort((a, b) => b.count - a.count);
+
+        res.json({
+            data: {
+                resolved: resolvedArray,
+                gaps: gapsArray
+            }
+        });
+
     } catch (err) {
-        console.error('getDemand error:', err);
+        console.error('getThematicClusters error:', err);
         res.status(500).json({ message: err.message });
     }
 };
+
 
 export const getFeedbackAnalysis = async (req, res) => {
     try {

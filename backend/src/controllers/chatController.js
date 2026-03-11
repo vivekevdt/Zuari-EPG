@@ -158,10 +158,10 @@ const sendMessage = async (req, res, next) => {
 
         // 3. Generate Bot Response
         const populatedUser = await req.user.populate(['entity', 'level', 'empCategory']);
-        const botContent = await aiService.generateAIResponse(recentMessages, populatedUser, selectedPolicy, availablePoliciesList);
+        const { content: botContent, policyName } = await aiService.generateAIResponse(recentMessages, populatedUser, selectedPolicy, availablePoliciesList);
 
-        // 4. Save Bot Message
-        const botMessage = await chatService.saveMessage(conversation._id, req.user._id, 'ai', botContent);
+        // 5. Save Bot Message
+        const botMessage = await chatService.saveMessage(conversation._id, req.user._id, 'ai', botContent, policyName);
 
         // 5. Update Conversation lastMessage
         await chatService.updateLastMessage(conversation._id, botContent);
