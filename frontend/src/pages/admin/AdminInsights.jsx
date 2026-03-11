@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     getInsightsAdoption,
-    getInsightsThemes,
-    getInsightsGaps,
-    getInsightsGapQueue,
-    flagInsightsGap,
-    unflagInsightsGap,
-    getInsightsDemand,
+    getInsightsThematicClusters,
     getInsightsEntities,
 } from '../../api';
 
@@ -32,22 +27,24 @@ const TrendBadge = ({ trend }) => {
     return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">→ Stable</span>;
 };
 
+const statColors = {
+    blue: 'from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800',
+    green: 'from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800',
+    amber: 'from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800',
+    red: 'from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800',
+    purple: 'from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800',
+};
+
 const StatCard = ({ label, value, delta, subText, color }) => {
-    const colors = {
-        blue: 'from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800',
-        green: 'from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800',
-        amber: 'from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800',
-        red: 'from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800',
-    };
     const deltaColors = { up: 'text-emerald-600 dark:text-emerald-400', down: 'text-red-500 dark:text-red-400', neutral: 'text-slate-500 dark:text-slate-400' };
     const deltaSymbols = { up: '↑', down: '↓', neutral: '→' };
 
     return (
-        <div className={`bg-gradient-to-br ${colors[color]} border rounded-2xl p-5`}>
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">{label}</div>
-            <div className="text-4xl font-black text-slate-900 dark:text-white mb-3">{value !== undefined ? value : '—'}</div>
+        <div className={`bg-gradient-to-br ${statColors[color]} border rounded-2xl p-4 shadow-sm flex flex-col justify-between`}>
+            <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{label}</div>
+            <div className="text-4xl font-black text-slate-900 dark:text-white mb-2">{value !== undefined ? value : '—'}</div>
             {delta && (
-                <div className="text-xs text-slate-500 dark:text-slate-400 flex gap-1.5 items-center flex-wrap">
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex gap-1.5 items-center flex-wrap mt-auto">
                     <span className={`font-bold ${deltaColors[delta.type]}`}>{deltaSymbols[delta.type]} {delta.value}{delta.type !== 'neutral' ? '%' : ''}</span>
                     <span>{subText}</span>
                 </div>
@@ -59,8 +56,7 @@ const StatCard = ({ label, value, delta, subText, color }) => {
 // ── Main Component ────────────────────────────────────────────────────────────
 const AdminInsights = () => {
     const [entity, setEntity] = useState('all');
-    const [period, setPeriod] = useState('30');
-    const [gapFilter, setGapFilter] = useState('all');
+    const [period] = useState('7');
     const [entities, setEntities] = useState([]);
 
     // Load entity list from DB once on mount
@@ -69,15 +65,13 @@ const AdminInsights = () => {
     }, []);
 
     const [adoption, setAdoption] = useState(null);
-    const [themes, setThemes] = useState([]);
-    const [gaps, setGaps] = useState([]);
-    const [queue, setQueue] = useState([]);
-    const [demand, setDemand] = useState([]);
-
     const [loadingAdoption, setLoadingAdoption] = useState(true);
-    const [loadingThemes, setLoadingThemes] = useState(true);
-    const [loadingGaps, setLoadingGaps] = useState(true);
-    const [loadingDemand, setLoadingDemand] = useState(true);
+
+    const [clustersData, setClustersData] = useState({ resolved: [], gaps: [] });
+    const [loadingClusters, setLoadingClusters] = useState(true);
+
+    const [activeTab, setActiveTab] = useState('resolved');
+    const [selectedClusterIdx, setSelectedClusterIdx] = useState(0);
 
     const fetchAdoption = useCallback(async () => {
         setLoadingAdoption(true);
@@ -88,68 +82,26 @@ const AdminInsights = () => {
         finally { setLoadingAdoption(false); }
     }, [entity, period]);
 
-    const fetchThemes = useCallback(async () => {
-        setLoadingThemes(true);
+    const fetchClusters = useCallback(async () => {
+        setLoadingClusters(true);
         try {
-            const data = await getInsightsThemes({ entity, period });
-            setThemes(data || []);
+            const data = await getInsightsThematicClusters({ entity, period });
+            setClustersData(data || { resolved: [], gaps: [] });
+            setSelectedClusterIdx(0); // reset selection when data changes
         } catch (err) { console.error(err); }
-        finally { setLoadingThemes(false); }
-    }, [entity, period]);
-
-    const fetchGaps = useCallback(async () => {
-        setLoadingGaps(true);
-        try {
-            const [gapsData, queueData] = await Promise.all([
-                getInsightsGaps({ entity, period }),
-                getInsightsGapQueue()
-            ]);
-            setGaps(gapsData || []);
-            setQueue(queueData || []);
-        } catch (err) { console.error(err); }
-        finally { setLoadingGaps(false); }
-    }, [entity, period]);
-
-    const fetchDemand = useCallback(async () => {
-        setLoadingDemand(true);
-        try {
-            const data = await getInsightsDemand({ entity, period });
-            setDemand(data || []);
-        } catch (err) { console.error(err); }
-        finally { setLoadingDemand(false); }
+        finally { setLoadingClusters(false); }
     }, [entity, period]);
 
     useEffect(() => {
         fetchAdoption();
-        fetchThemes();
-        fetchGaps();
-        fetchDemand();
-    }, [fetchAdoption, fetchThemes, fetchGaps, fetchDemand]);
+        fetchClusters();
+    }, [fetchAdoption, fetchClusters]);
 
-    const handleFlag = async (gap) => {
-        try {
-            await flagInsightsGap(gap.id, {
-                question: gap.question,
-                entity: gap.entity,
-                level: gap.level
-            });
-            const queueData = await getInsightsGapQueue();
-            setQueue(queueData || []);
-        } catch (e) { console.error(e); }
-    };
+    const periodLabel = 'vs previous week';
 
-    const handleUnflag = async (flagId) => {
-        try {
-            await unflagInsightsGap(flagId);
-            setQueue(prev => prev.filter(q => q._id !== flagId));
-        } catch (e) { console.error(e); }
-    };
-
-    const flaggedFeedbackIds = new Set(queue.map(q => String(q.feedbackId)));
-    const filteredGaps = gapFilter === 'all' ? gaps : gaps.filter(g => g.type === gapFilter);
-    const visibleThemes = themes.filter(t => t.currentCount > 0);
-
-    const periodLabel = period === '90' ? 'vs prior 90 days' : period === 'year' ? 'vs prior year' : 'vs prior 30 days';
+    // compute current active clusters list
+    const activeList = activeTab === 'resolved' ? clustersData.resolved : clustersData.gaps;
+    const activeClusterInfo = activeList[selectedClusterIdx];
 
     return (
         <div className="space-y-10 pb-12 min-h-full">
@@ -169,14 +121,7 @@ const AdminInsights = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Period</span>
-                        <select value={period} onChange={e => setPeriod(e.target.value)} className="bg-transparent font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer text-sm">
-                            <option value="30">Last 30 days</option>
-                            <option value="90">Last 90 days</option>
-                            <option value="year">This year</option>
-                        </select>
-                    </div>
+                    {/* Period filter removed as per user request */}
                     <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white px-3 py-2 rounded-xl shadow-md shadow-emerald-400/30">
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Live
                     </span>
@@ -192,11 +137,65 @@ const AdminInsights = () => {
                     <EmptyState icon="📊" title="No data yet" desc="Conversations will appear here once employees start chatting." />
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                            <StatCard label="Total Conversations" value={adoption.totalConversations?.value} delta={adoption.totalConversations?.delta} subText={periodLabel} color="blue" />
-                            <StatCard label="Unique Employees" value={adoption.uniqueEmployees?.value} delta={adoption.uniqueEmployees?.delta} subText={`of ${adoption.uniqueEmployees?.total || '?'} total`} color="green" />
-                            <StatCard label="Queries This Week" value={adoption.queriesThisWeek?.value} delta={adoption.queriesThisWeek?.delta} subText="week-on-week" color="amber" />
-                            <StatCard label="Unhelpful Ratings" value={adoption.unhelpfulRatings?.value} delta={adoption.unhelpfulRatings?.delta} subText={periodLabel} color="red" />
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                            <StatCard
+                                label="Total Inquiries"
+                                value={adoption.totalInquiries?.value}
+                                delta={adoption.totalInquiries?.delta}
+                                subText={`unique sessions ${periodLabel}`}
+                                color="blue"
+                            />
+                            <StatCard
+                                label="AI Resolution Rate"
+                                value={`${adoption.aiResolutionRate?.value}%`}
+                                delta={adoption.aiResolutionRate?.delta}
+                                subText={`resolved by AI ${periodLabel}`}
+                                color="green"
+                            />
+                            <StatCard
+                                label="HR Time Saved"
+                                value={(() => {
+                                    const mins = adoption.hrTimeSaved?.value || 0;
+                                    if (mins < 60) return `${mins}m`;
+                                    const hrs = Math.floor(mins / 60);
+                                    const remainingMins = mins % 60;
+                                    return remainingMins > 0 ? `${hrs}h ${remainingMins}m` : `${hrs}h`;
+                                })()}
+                                delta={adoption.hrTimeSaved?.delta}
+                                subText={`efficiency gain ${periodLabel}`}
+                                color="amber"
+                            />
+                            <StatCard
+                                label="Human Handoff Rate"
+                                value={`${adoption.humanHandoffRate?.value}%`}
+                                delta={adoption.humanHandoffRate?.delta}
+                                subText={`escalated to HR ${periodLabel}`}
+                                color="red"
+                            />
+
+                            <div className={`bg-gradient-to-br ${statColors.purple} border rounded-2xl p-4 shadow-sm flex flex-col justify-between`}>
+                                <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 leading-none flex items-center gap-2">
+                                    User Feedback
+                                </div>
+                                <div className="flex justify-between gap-4 mb-2">
+                                    <div className="flex-1">
+                                        <div className="text-4xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{adoption.userFeedback?.helpful || 0}</div>
+                                        <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mt-1 tracking-wider">Helpful</div>
+                                    </div>
+                                    <div className="h-8 w-px bg-purple-200 dark:bg-purple-800/50"></div>
+                                    <div className="flex-1 text-right">
+                                        <div className="text-4xl font-black text-red-500 dark:text-red-400 leading-none">{adoption.userFeedback?.unhelpful || 0}</div>
+                                        <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mt-1 tracking-wider text-right">Unhelpful</div>
+                                    </div>
+                                </div>
+                                <div className="text-[10px] text-slate-400 flex gap-2 mt-auto">
+                                    <span className={adoption.userFeedback?.helpfulDelta?.type === 'up' ? 'text-emerald-500 font-bold' : ''}>
+                                        {adoption.userFeedback?.helpfulDelta?.type === 'up' && '↑'} {adoption.userFeedback?.helpfulDelta?.value}% Helpful
+                                    </span>
+                                    <span>•</span>
+                                    <span>{periodLabel}</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -208,23 +207,54 @@ const AdminInsights = () => {
                                 </div>
                                 {adoption.dailyVolume?.length > 0 ? (
                                     <>
-                                        <div className="flex items-end gap-1 h-16 mb-2">
+                                        <div className="h-40 relative flex items-end gap-2 mb-4 px-1">
+                                            {/* Background Grid Lines for a premium feel */}
+                                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-[0.03] dark:opacity-[0.07]">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <div key={i} className="w-full h-px bg-slate-900 dark:bg-white" />
+                                                ))}
+                                            </div>
+
+                                            {/* Bars */}
                                             {adoption.dailyVolume.map((d, i) => {
                                                 const maxVal = Math.max(...adoption.dailyVolume.map(x => x.count), 1);
-                                                const h = d.count === 0 ? 2 : Math.round((d.count / maxVal) * 56) + 4;
+                                                const h = d.count === 0 ? 4 : Math.round((d.count / maxVal) * 150) + 6;
                                                 const isToday = i === adoption.dailyVolume.length - 1;
+
                                                 return (
-                                                    <div key={i} className="flex-1 flex flex-col items-center gap-1" title={`${d.count} queries`}>
-                                                        <div style={{ height: h }} className={`w-full rounded-t-md transition-all ${isToday ? 'bg-slate-200 dark:bg-slate-600' : 'bg-blue-500 dark:bg-blue-600'}`}></div>
+                                                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                                                        {/* Tooltip on Hover */}
+                                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-10 shadow-xl border border-slate-700 dark:border-slate-200 translate-y-2 group-hover:translate-y-0 uppercase tracking-widest">
+                                                            {d.count} queries
+                                                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 dark:bg-white rotate-45 border-r border-b border-slate-700 dark:border-slate-200"></div>
+                                                        </div>
+
+                                                        {/* Bar with Gradient and Animation */}
+                                                        <div
+                                                            style={{ height: `${h}px`, animationDelay: `${i * 0.05}s` }}
+                                                            className={`w-full rounded-t-lg transition-all duration-300 relative overflow-hidden group-hover:brightness-110 group-hover:shadow-lg group-hover:shadow-blue-500/20 animate-grow ${isToday
+                                                                ? 'bg-slate-200 dark:bg-slate-700 border-2 border-dashed border-slate-300 dark:border-slate-600'
+                                                                : 'bg-gradient-to-t from-blue-600 via-blue-500 to-blue-400 dark:from-blue-700 dark:via-blue-600 dark:to-blue-500'
+                                                                }`}
+                                                        >
+                                                            {/* Subtle reflection effect for premium look */}
+                                                            <div className="absolute top-0 left-0 w-full h-[50%] bg-white/10 opacity-20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                        <div className="flex">
-                                            {adoption.dailyVolume.map((d, i) => <div key={i} className="flex-1 text-center text-[9px] text-slate-400">{d.day}</div>)}
+                                        <div className="flex mt-2">
+                                            {adoption.dailyVolume.map((d, i) => (
+                                                <div key={i} className="flex-1 text-center font-black text-[9px] text-slate-400 uppercase tracking-widest leading-none">
+                                                    {d.day}
+                                                </div>
+                                            ))}
                                         </div>
                                     </>
-                                ) : <p className="text-xs text-slate-400 py-6 text-center">No query data for this period.</p>}
+                                ) : (
+                                    <p className="text-xs text-slate-400 py-12 text-center italic">No query data for this period.</p>
+                                )}
 
                                 {adoption.byLevel?.length > 0 && (
                                     <div className="mt-5 space-y-2">
@@ -292,33 +322,58 @@ const AdminInsights = () => {
                                             </div>
 
                                             <div className="flex-1 flex flex-col gap-2.5">
-                                                {adoption.policyAccess.slice(0, 5).map((entry, i) => {
+                                                {(() => {
                                                     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#8b5cf6'];
+                                                    const otherPolicy = adoption.policyAccess.find(p => p.name === 'Other');
+                                                    const mainPolicies = adoption.policyAccess.filter(p => p.name !== 'Other');
+                                                    const topMain = mainPolicies.slice(0, 5);
+                                                    const remainingMain = mainPolicies.slice(5);
+                                                    const otherTopicsPct = remainingMain.reduce((acc, curr) => acc + curr.percentage, 0);
+
                                                     return (
-                                                        <div key={entry.name} className="flex items-center justify-between w-full group">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }}></div>
-                                                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-[120px]">
-                                                                    {entry.name}
-                                                                </span>
-                                                            </div>
-                                                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-2">
-                                                                {entry.percentage}%
-                                                            </span>
-                                                        </div>
+                                                        <>
+                                                            {topMain.map((entry, i) => (
+                                                                <div key={entry.name} className="flex items-center justify-between w-full group">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }}></div>
+                                                                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-[120px]">
+                                                                            {entry.name}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-2">
+                                                                        {entry.percentage}%
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+
+                                                            {otherTopicsPct > 0 && (
+                                                                <div className="flex items-center justify-between w-full group opacity-60">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                                                                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Other Topics</span>
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-2">
+                                                                        {otherTopicsPct}%
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {otherPolicy && (
+                                                                <div className="flex items-center justify-between w-full group pt-1 border-t border-slate-100 dark:border-slate-800 mt-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-2 h-2 rounded-full bg-slate-500"></div>
+                                                                        <span className="text-xs text-slate-700 dark:text-slate-200 font-bold truncate max-w-[120px]">
+                                                                            {otherPolicy.name}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-2">
+                                                                        {otherPolicy.percentage}%
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     );
-                                                })}
-                                                {adoption.policyAccess.length > 5 && (
-                                                    <div className="flex items-center justify-between w-full group opacity-60">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Other Topics</span>
-                                                        </div>
-                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-2">
-                                                            {adoption.policyAccess.slice(5).reduce((acc, curr) => acc + curr.percentage, 0)}%
-                                                        </span>
-                                                    </div>
-                                                )}
+                                                })()}
                                             </div>
                                         </>
                                     ) : (
@@ -335,175 +390,179 @@ const AdminInsights = () => {
 
             <hr className="border-slate-200 dark:border-slate-700" />
 
-            {/* ── 02 Question Themes ── */}
+            {/* ── 02 Thematic Clusters ── */}
             <section>
                 <div className="flex items-center justify-between mb-5">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">02 — Question Themes</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">02 — Thematic Clusters</span>
                 </div>
-                {loadingThemes ? <Spinner /> : visibleThemes.length === 0 ? (
-                    <EmptyState icon="🔍" title="No themes yet" desc="Themes are derived from employee questions. Send a few messages to see them here." hint="💡 Typically visible after ~20 conversations." />
+
+                {loadingClusters ? <Spinner /> : (clustersData.resolved.length === 0 && clustersData.gaps.length === 0) ? (
+                    <EmptyState icon="🔍" title="No clusters yet" desc="Clusters are derived from employee questions." hint="💡 Typically visible after a few conversations." />
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {visibleThemes.map(t => {
-                            const delta = t.currentCount - t.prevCount;
-                            const deltaAbs = Math.abs(delta);
-                            const hasActivity = t.currentCount > 0 || t.prevCount > 0;
-                            return (
-                                <div key={t.name} className={`bg-white dark:bg-slate-800 border rounded-2xl p-5 hover:shadow-md transition-all ${hasActivity ? 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700' : 'border-dashed border-slate-200 dark:border-slate-700 opacity-60'}`}>
-                                    {/* Header */}
-                                    <div className="flex items-start justify-between gap-2 mb-3">
-                                        <span className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{t.name}</span>
-                                        <TrendBadge trend={t.trend} />
-                                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-[3fr_7fr] gap-6">
 
-                                    {/* Progress bar */}
-                                    <div className="mb-3 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${t.pct}%` }} />
-                                    </div>
-
-                                    {/* Count comparison: current vs previous */}
-                                    <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-700/40 rounded-xl px-3 py-2.5 mb-3">
-                                        <div className="text-center">
-                                            <div className="text-xl font-black text-slate-900 dark:text-white leading-none">{t.currentCount}</div>
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">This Period</div>
-                                        </div>
-                                        <div className={`text-base font-black ${delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-red-500' : 'text-slate-300 dark:text-slate-600'}`}>
-                                            {delta > 0 ? `↑ +${deltaAbs}` : delta < 0 ? `↓ ${deltaAbs}` : '→'}
-                                        </div>
-                                        <div className="text-center">
-                                            <div className="text-xl font-black text-slate-400 dark:text-slate-500 leading-none">{t.prevCount}</div>
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Prev Period</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Sample question */}
-                                    {t.sample
-                                        ? <p className="text-xs text-slate-500 dark:text-slate-400 italic truncate" title={t.sample}>{t.sample}</p>
-                                        : <p className="text-xs text-slate-300 dark:text-slate-600 italic">No questions yet in this period</p>
-                                    }
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                )}
-            </section>
-
-            <hr className="border-slate-200 dark:border-slate-700" />
-
-            {/* ── 03 Policy Gap Signals ── */}
-            <section>
-                <div className="flex items-center justify-between mb-5">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">03 — Policy Gap Signals</span>
-                    <span className="text-xs text-slate-400">{gaps.length} signal{gaps.length !== 1 ? 's' : ''} found</span>
-                </div>
-                {loadingGaps ? <Spinner /> : (
-                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-                        {/* Gap list */}
-                        <div>
-                            <div className="flex gap-2 mb-4 flex-wrap">
-                                {[['all', `All (${gaps.length})`], ['unhelpful', `Rated Unhelpful (${gaps.filter(g => g.type === 'unhelpful').length})`]].map(([val, label]) => (
-                                    <button key={val} onClick={() => setGapFilter(val)} className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${gapFilter === val ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                                        {label}
-                                    </button>
-                                ))}
+                        {/* Left Column: Tabs & List */}
+                        <div className="flex flex-col gap-4">
+                            {/* Tabs */}
+                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                                <button
+                                    onClick={() => { setActiveTab('resolved'); setSelectedClusterIdx(0); }}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'resolved' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                                >
+                                    <span className="text-sm">✓</span> Resolved
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('gaps'); setSelectedClusterIdx(0); }}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'gaps' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                                >
+                                    <span className="text-sm text-slate-400">✕</span> Gaps
+                                </button>
                             </div>
-                            {filteredGaps.length === 0 ? (
-                                <EmptyState icon="✅" title="No gap signals" desc="Gap signals appear when employees rate AI responses as unhelpful." hint="Keep improving your policies to maintain a clean gap signal list!" />
-                            ) : (
-                                <div className="space-y-3">
-                                    {filteredGaps.map(g => {
-                                        const isFlagged = flaggedFeedbackIds.has(String(g.id));
+
+                            {/* List of Clusters */}
+                            <div className="flex flex-col gap-3 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+                                {activeList.length === 0 ? (
+                                    <div className="py-10 text-center text-xs text-slate-400">No {activeTab} clusters found.</div>
+                                ) : (
+                                    activeList.map((cluster, idx) => {
+                                        const isSelected = idx === selectedClusterIdx;
+
                                         return (
-                                            <div key={g.id} className="flex items-start gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-                                                <div className="text-xl shrink-0 mt-0.5">👎</div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-semibold text-slate-800 dark:text-white mb-1.5 break-words">{g.question}</p>
-                                                    <div className="flex flex-wrap gap-2 text-[10px] font-medium text-slate-400">
-                                                        {g.entity && <span>🏢 {g.entity}</span>}
-                                                        {g.level && <span>👤 {g.level}</span>}
-                                                    </div>
+                                            <div
+                                                key={cluster.name}
+                                                onClick={() => setSelectedClusterIdx(idx)}
+                                                className={`shrink-0 cursor-pointer border rounded-2xl p-4 transition-all relative overflow-hidden ${isSelected ? (activeTab === 'resolved' ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-500/50' : 'border-red-500 bg-red-50/50 dark:bg-red-900/10 dark:border-red-500/50') : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                                            >
+                                                {/* Left accent line for selected */}
+                                                {isSelected && (
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${activeTab === 'resolved' ? 'bg-blue-500' : 'bg-red-500'}`} />
+                                                )}
+
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">{cluster.name}</span>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${activeTab === 'resolved' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                                        {cluster.count} {activeTab === 'resolved' ? 'Solved' : 'Gaps'}
+                                                    </span>
                                                 </div>
-                                                <div className="flex flex-col items-end gap-2 shrink-0">
-                                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">Rated Unhelpful</span>
-                                                    <button
-                                                        onClick={() => !isFlagged && handleFlag(g)}
-                                                        disabled={isFlagged}
-                                                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isFlagged ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 cursor-default' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 cursor-pointer'}`}
-                                                    >
-                                                        {isFlagged ? '✓ Flagged' : '🚩 Flag'}
-                                                    </button>
+
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all duration-500 ${activeTab === 'resolved' ? 'bg-blue-500' : 'bg-red-500'}`}
+                                                            style={{ width: `${cluster.percentage}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-xs font-bold text-slate-500">{cluster.percentage}%</span>
                                                 </div>
                                             </div>
                                         );
-                                    })}
-                                </div>
-                            )}
+                                    })
+                                )}
+                            </div>
                         </div>
 
-                        {/* Flag queue */}
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">🚩 Flagged for Revision</span>
-                                <span className="text-[10px] text-slate-400">{queue.length} item{queue.length !== 1 ? 's' : ''}</span>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 min-h-[200px]">
-                                {queue.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-40 text-slate-400 dark:text-slate-500 text-center">
-                                        <div className="text-3xl mb-2">🚩</div>
-                                        <p className="text-xs">No items flagged yet.<br />Flag gaps from the list to queue them.</p>
+                        {/* Right Column: Details */}
+                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 relative flex flex-col">
+                            {!activeClusterInfo ? (
+                                <div className="flex-1 flex items-center justify-center text-slate-400 text-sm italic">
+                                    Select a cluster to view details
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Header */}
+                                    <div className="flex justify-between items-start mb-8">
+                                        <div>
+                                            <span className={`inline-block px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full mb-3 ${activeTab === 'resolved' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
+                                                {activeTab === 'resolved' ? 'HIGH VALUE CLUSTER' : 'PRIORITY GAP CLUSTER'}
+                                            </span>
+                                            <h2 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">{activeClusterInfo.name}</h2>
+                                            {activeTab === 'gaps' && (
+                                                <p className="text-sm font-semibold text-red-500 mt-2">Missing content causing AI fallbacks</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="flex items-baseline gap-1 justify-end">
+                                                <span className="text-5xl font-black text-slate-900 dark:text-white leading-none">{activeClusterInfo.count}</span>
+                                            </div>
+                                            <div className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
+                                                {activeTab === 'resolved' ? 'RESOLUTIONS' : 'GAPS'}
+                                            </div>
+                                            <div className={`h-1 w-full mt-2 rounded-full ${activeTab === 'resolved' ? 'bg-blue-500' : 'bg-red-500'}`}></div>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {queue.map(q => (
-                                            <div key={q._id} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
-                                                <div className="flex items-start justify-between gap-2 mb-1">
-                                                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words">{q.question}</p>
-                                                    <button onClick={() => handleUnflag(q._id)} className="text-slate-300 dark:text-slate-500 hover:text-red-400 transition-colors shrink-0 text-xs cursor-pointer">✕</button>
-                                                </div>
-                                                <div className="flex gap-2 text-[10px] text-slate-400 flex-wrap">
-                                                    {q.entity && <span>🏢 {q.entity}</span>}
-                                                    {q.level && <span>👤 {q.level}</span>}
+
+                                    {/* Line Separator */}
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                                            {activeTab === 'resolved' ? 'SUCCESSFUL EMPLOYEE INQUIRIES' : 'UNANSWERED EMPLOYEE QUERIES'}
+                                        </span>
+                                        <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700" />
+                                    </div>
+
+                                    {/* Samples List */}
+                                    <div className="flex-1 overflow-y-auto max-h-[350px] custom-scrollbar pr-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10 backdrop-blur-sm">
+                                                <tr>
+                                                    <th className="py-3 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700 w-12 text-center">Status</th>
+                                                    <th className="py-3 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700 w-1/3">Query</th>
+                                                    <th className="py-3 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700">Response</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                                {activeClusterInfo.samples.map((sample, idx) => {
+                                                    const isObject = typeof sample === 'object' && sample !== null;
+                                                    const question = isObject ? sample.question : sample;
+                                                    const responseContent = isObject ? sample.response : "N/A";
+
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
+                                                            <td className="py-3 px-4 align-middle text-center">
+                                                                <div className={`w-6 h-6 rounded-full inline-flex items-center justify-center shrink-0 ${activeTab === 'resolved' ? 'bg-blue-50 text-blue-500 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-red-50 text-red-500 dark:bg-red-900/40 dark:text-red-400'}`}>
+                                                                    {activeTab === 'resolved' ? '✓' : '✕'}
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3 px-4 align-top">
+                                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">"{question}"</p>
+                                                            </td>
+                                                            <td className="py-3 px-4 align-top relative">
+                                                                <div className="text-xs text-slate-600 dark:text-slate-400">
+                                                                    <div className="line-clamp-2" dangerouslySetInnerHTML={{ __html: responseContent }} />
+
+                                                                    {/* Hover Tooltip */}
+                                                                    {responseContent !== "N/A" && (
+                                                                        <div className="absolute left-4 top-10 z-50 w-80 max-h-64 overflow-y-auto bg-slate-900 dark:bg-slate-700 text-slate-100 dark:text-slate-200 text-xs p-4 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 border border-slate-700 dark:border-slate-600">
+                                                                            <div dangerouslySetInnerHTML={{ __html: responseContent }} />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Footer / CTA Frame */}
+                                    <div className="mt-8">
+                                        {activeTab === 'resolved' && (
+                                            <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 flex-wrap gap-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm shrink-0">
+                                                        <span className="text-blue-500 text-lg">✨</span>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Success Insight</div>
+                                                        <div className="text-[10px] text-slate-500 mt-0.5">Automated resolution is healthy. No immediate action required for this segment.</div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
-                                )}
-                            </div>
+                                </>
+                            )}
                         </div>
-                    </div>
-                )}
-            </section>
-
-            <hr className="border-slate-200 dark:border-slate-700" />
-
-            {/* ── 04 Unanswered Demand ── */}
-            <section>
-                <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">04 — Unanswered Demand</span>
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Topics employees ask about that aren't covered by existing policies</p>
-                {loadingDemand ? <Spinner /> : demand.length === 0 ? (
-                    <EmptyState icon="🎉" title="No unanswered demand detected" desc="All questions appear to be handled by existing policies." hint="Great sign! Keep your policies up-to-date to maintain this." />
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {demand.map(d => (
-                            <div key={d.theme} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${d.strength === 'high' ? 'text-red-500' : d.strength === 'medium' ? 'text-amber-500' : 'text-slate-400'}`}>
-                                    ● {d.strength === 'high' ? 'High Signal' : d.strength === 'medium' ? 'Medium Signal' : 'Low Signal'}
-                                </span>
-                                <p className="text-base font-black text-slate-900 dark:text-white mt-1 mb-1">{d.theme}</p>
-                                <p className="text-xs text-slate-400 mb-3">{d.count} employee{d.count !== 1 ? 's' : ''} asked about this</p>
-                                <div className="space-y-1.5 mb-4">
-                                    {d.samples.map((s, i) => <p key={i} className="text-xs text-slate-500 dark:text-slate-400 italic">"{s}"</p>)}
-                                </div>
-                                {d.segments?.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {d.segments.map(seg => <span key={seg} className="text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">{seg}</span>)}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
                     </div>
                 )}
             </section>

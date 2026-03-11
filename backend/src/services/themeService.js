@@ -1,21 +1,6 @@
-import QuestionTheme, { PREDEFINED_THEMES } from '../models/QuestionTheme.js';
+import QuestionTheme from '../models/QuestionTheme.js';
 import MessageThemeLog from '../models/MessageThemeLog.js';
 import aiService from './aiService.js';
-
-// ── Seed the 6 predefined themes exactly once on startup ──────────────────────
-export const seedPredefinedThemes = async () => {
-    try {
-        for (const name of PREDEFINED_THEMES) {
-            await QuestionTheme.findOneAndUpdate(
-                { name },
-                { name, isPredefined: true },
-                { upsert: true, setDefaultsOnInsert: true }
-            );
-        }
-    } catch (err) {
-        console.error('❌ seedPredefinedThemes failed:', err.message);
-    }
-};
 
 import { createLog } from '../utils/logger.js';
 
@@ -26,32 +11,43 @@ export const classifyAndRecord = async ({
     conversationId,
     question,
     entityName = '',
-    levelName = ''
+    levelName = '',
+    policyName = ''
 }) => {
     try {
         // Telemetry log to DB so we can verify this is hitting in production
         await createLog(userId, 'System (Theme)', 'system', null, `Theme classification started: ${question.substring(0, 30)}`);
 
-        // 1. Fetch all current theme names (predefined + previously discovered)
-        const allThemes = await QuestionTheme.find({}).select('name').lean();
-        const themeNames = allThemes.map(t => t.name);
+        // 1. Fetch all current predefined themes with definition and examples
+        const allThemes = await QuestionTheme.find({ isPredefined: true })
+            .select('name description exampleQueries')
+            .lean();
 
         // 2. Ask Gemini to classify
-        const result = await aiService.classifyQuestionTheme(question, themeNames);
+        const result = await aiService.classifyQuestionTheme(question, allThemes);
         if (!result || !result.theme) {
             console.warn('classifyAndRecord: Gemini returned no theme for:', question.substring(0, 60));
             return;
         }
 
-        // 3. Upsert theme (may be new if isNew === true)
-        const theme = await QuestionTheme.findOneAndUpdate(
-            { name: result.theme },
-            {
-                $setOnInsert: { name: result.theme, isPredefined: false },
-                $inc: { count: 1 }
-            },
-            { upsert: true, new: true }
+        // 3. Increment count on mapped theme
+        let theme = await QuestionTheme.findOneAndUpdate(
+            { name: result.theme, isPredefined: true },
+            { $inc: { count: 1 } },
+            { new: true }
         );
+
+        // Fallback if Gemini hallucinated a name
+        if (!theme) {
+            theme = await QuestionTheme.findOneAndUpdate(
+                { name: 'Other / Unclassified' },
+                {
+                    $setOnInsert: { name: 'Other / Unclassified', isPredefined: true },
+                    $inc: { count: 1 }
+                },
+                { upsert: true, new: true }
+            );
+        }
 
         // 4. Write the log entry
         await MessageThemeLog.create({
@@ -62,11 +58,39 @@ export const classifyAndRecord = async ({
             themeName: theme.name,
             question,
             entity: entityName,
-            level: levelName
+            level: levelName,
+            policyName
         });
 
     } catch (err) {
         // Never throw — this runs fire-and-forget and must not crash the chat
         console.error('classifyAndRecord error:', err.message);
+    }
+};
+
+const PREDEFINED_THEMES = [
+    'Leave Policy',
+    'Payroll',
+    'Benefits',
+    'Performance Management',
+    'Travel Policy',
+    'IT Support',
+    'Onboarding',
+    'Offboarding',
+    'Appraisal',
+    'General Inquiry'
+];
+
+export const seedPredefinedThemes = async () => {
+    try {
+        for (const name of PREDEFINED_THEMES) {
+            await QuestionTheme.findOneAndUpdate(
+                { name },
+                { $setOnInsert: { name, isPredefined: true } },
+                { upsert: true }
+            );
+        }
+    } catch (err) {
+        console.error('Error seeding predefined themes:', err.message);
     }
 };

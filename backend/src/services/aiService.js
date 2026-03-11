@@ -97,11 +97,12 @@ const generateAIResponse = async (messages, user, selectedPolicy = null, availab
 
         // 2. Search for relevant policies using Vector DB
         let policyText = "No relevant policies found.";
+        let policyName = "Other";
         if (query) {
             try {
                 const searchResults = await searchPolicy(query, user, selectedPolicy);
                 if (searchResults && searchResults.length > 0) {
-
+                    policyName = searchResults[0].policy;
                     policyText = searchResults.map(r =>
                         `--- DOCUMENT: ${r.policy} ---\n${r.content}\n--- END DOCUMENT ---\n`
                     ).join("\n");
@@ -194,11 +195,17 @@ const generateAIResponse = async (messages, user, selectedPolicy = null, availab
             text = response.response.text();
         }
 
-        return text;
+        return {
+            content: text,
+            policyName
+        };
 
     } catch (error) {
         console.error("Gemini Error:", error);
-        return "Sorry, I'm having trouble retrieving a response.";
+        return {
+            content: "Sorry, I'm having trouble retrieving a response.",
+            policyName: null
+        };
     }
 };
 
@@ -251,42 +258,34 @@ Example format:
     }
 };
 
-const classifyQuestionTheme = async (question, themeNames = []) => {
+const classifyQuestionTheme = async (question, themes = []) => {
     try {
         if (!config.GEMINI_API_KEY) return null;
 
-        const themeList = themeNames.map((n, i) => `${i + 1}. ${n}`).join('\n');
+        const themeList = themes.map((t, i) => `${i + 1}. Theme: "${t.name}"\n   Definition: ${t.description || 'N/A'}\n   Examples: ${t.exampleQueries || 'N/A'}`).join('\n\n');
 
         const response = await genAI.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [{ role: 'user', parts: [{ text: `Question: "${question}"` }] }],
             config: {
-                systemInstruction: `You are an HR analytics assistant. Classify the question into one of these categories:
+                systemInstruction: `You are an HR analytics assistant. Classify the user question STRICTLY into one of the following predefined categories based on their definitions and examples:
+
 ${themeList}
 
 RULES:
-- If it matches an existing category, return that exact name.
-- If it's a new HR topic, suggest a concise new category (3-6 words, Title Case).
-- Return ONLY JSON: {"theme": "Category Name", "isNew": boolean}`,
+- You MUST choose the most relevant category from the exact names listed above.
+- Do NOT create, suggest, or use any new categories.
+- If the question does not clearly fit into any specific category, classify it as "Other / Unclassified".
+- Return ONLY JSON: {"theme": "Exact Category Name"}`,
                 temperature: 0.1,
                 maxOutputTokens: 1024
             }
         });
 
-        console.log('classifyQuestionTheme: Raw response keys:', Object.keys(response || {}));
 
-        let text = '';
-        if (response) {
-            if (typeof response.text === 'function') {
-                text = response.text();
-            } else if (response.text) {
-                text = response.text;
-            } else if (response.response && typeof response.response.text === 'function') {
-                text = response.response.text();
-            } else if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts && response.candidates[0].content.parts[0]) {
-                text = response.candidates[0].content.parts[0].text;
-            }
-        }
+        const text = (typeof response.response?.text === 'function' ? response.response.text() :
+            typeof response.text === 'function' ? response.text() :
+                response.text) || "";
 
         if (!text) return null;
 
@@ -344,14 +343,9 @@ export const clusterDemandGaps = async (feedbacks) => {
             }
         });
 
-        let responseText = "";
-        if (typeof response.text === 'function') {
-            responseText = response.text();
-        } else if (response.text) {
-            responseText = response.text;
-        } else if (response.response && typeof response.response.text === 'function') {
-            responseText = response.response.text();
-        }
+        const responseText = (typeof response.response?.text === 'function' ? response.response.text() :
+            typeof response.text === 'function' ? response.text() :
+                response.text) || "";
 
         if (!responseText) return [];
 
@@ -371,10 +365,74 @@ export const clusterDemandGaps = async (feedbacks) => {
     }
 };
 
+/**
+ * ── Generate Themes from Policies ─────────────────────────────────────────
+ * Analyzes the text of all HR policies and extracts distinct, comprehensive
+ * thematic categories covering the material.
+ */
+export const generateThemesFromPolicies = async (policyContext) => {
+    try {
+        if (!config.GEMINI_API_KEY) return [];
+
+        const prompt = `
+        You are an expert HR Analyst. Based on the following summary/extracts of the company's HR policies:
+        
+        ${policyContext}
+        
+        Your task is to generate a comprehensive list of specific, clear, and distinct HR Themes (Categories) that employee questions might fall under.
+        
+        Rules for Themes:
+        - Must be concise, ideally 3-6 words (e.g. "Maternity Leave Eligibility", "Travel Budget Rules").
+        - Must cover all major topics found in the provided policy text.
+        - Do not create overlapping or overly broad themes (like just "HR" or "Policies").
+        - Return ONLY a JSON array of strings. No markdown, no explanations.
+        
+        Example:
+        ["Health Insurance Benefits", "Remote Work Policy", "Expense Reimbursement"]
+        `;
+
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+                systemInstruction: "You are an HR Analyst creating a taxonomy of policy themes. Return only a Raw JSON array of strings.",
+                temperature: 0.1,
+                maxOutputTokens: 2048
+            }
+        });
+
+        let responseText = "";
+        if (typeof response.text === 'function') {
+            responseText = response.text();
+        } else if (response.text) {
+            responseText = response.text;
+        } else if (response.response && typeof response.response.text === 'function') {
+            responseText = response.response.text();
+        }
+
+        if (!responseText) return [];
+
+        // Clean out possible markdown code block artifacts
+        const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        try {
+            const themes = JSON.parse(cleanText);
+            if (Array.isArray(themes)) return themes;
+            return [];
+        } catch (e) {
+            console.error('generateThemesFromPolicies: JSON parse failed for:', cleanText);
+            return [];
+        }
+    } catch (err) {
+        console.error('generateThemesFromPolicies error:', err);
+        return [];
+    }
+}
+
 export default {
     generateAIResponse,
     generateDynamicFAQs,
     classifyQuestionTheme,
-    clusterDemandGaps
+    clusterDemandGaps,
+    generateThemesFromPolicies
 };
-

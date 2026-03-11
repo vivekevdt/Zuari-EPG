@@ -1,7 +1,17 @@
 import mongoose from "mongoose";
 
-const feedbackSchema = new mongoose.Schema(
+const queryFeedbackSchema = new mongoose.Schema(
     {
+        queryId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Message',
+            required: true
+        },
+        responseId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Message',
+            required: true
+        },
         userName: {
             type: String,
             required: true
@@ -40,4 +50,4 @@ const feedbackSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-export default mongoose.model("Feedback", feedbackSchema);
+export default mongoose.model("QueryFeedback", queryFeedbackSchema);

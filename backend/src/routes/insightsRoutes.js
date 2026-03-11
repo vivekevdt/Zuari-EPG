@@ -2,13 +2,10 @@ import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
 import {
     getAdoption,
-    getThemes,
-    getGaps,
-    getGapQueue,
-    flagGap,
-    unflagGap,
-    getDemand,
-    getEntities
+    getThematicClusters,
+    getEntities,
+    getFeedbackAnalysis,
+    exportFeedbackAnalysis
 } from '../controllers/insightsController.js';
 
 const router = express.Router();
@@ -23,11 +20,8 @@ const adminOnly = (req, res, next) => {
 
 router.get('/entities', protect, adminOnly, getEntities);
 router.get('/adoption', protect, adminOnly, getAdoption);
-router.get('/themes', protect, adminOnly, getThemes);
-router.get('/gaps', protect, adminOnly, getGaps);
-router.get('/gaps/queue', protect, adminOnly, getGapQueue);
-router.post('/gaps/:id/flag', protect, adminOnly, flagGap);
-router.delete('/gaps/queue/:id', protect, adminOnly, unflagGap);
-router.get('/demand', protect, adminOnly, getDemand);
+router.get('/thematic-clusters', protect, adminOnly, getThematicClusters);
+router.get('/feedback-analysis', protect, adminOnly, getFeedbackAnalysis);
+router.get('/feedback-analysis/export', protect, adminOnly, exportFeedbackAnalysis);
 
 export default router;
