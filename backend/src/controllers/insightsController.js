@@ -69,13 +69,13 @@ export const getAdoption = async (req, res) => {
         // Note: For escalation calculation, we look for "not covered" keywords in AI responses
         const unresolvedQueries = await Message.countDocuments({
             role: 'ai',
-            content: { $regex: /not covered/i },
+            content: { $regex: /not covered in the current HR policy/i },
             ...userIdFilter,
             createdAt: { $gte: startDate, $lte: now }
         });
         const prevUnresolvedQueries = await Message.countDocuments({
             role: 'ai',
-            content: { $regex: /not covered/i },
+            content: { $regex: /not covered in the current HR policy/i },
             ...userIdFilter,
             createdAt: { $gte: prevStart, $lt: startDate }
         });
@@ -247,7 +247,7 @@ export const getThematicClusters = async (req, res) => {
                 const aiMsg = aiMessagesByConv[log.conversationId].find(m => m.createdAt > userMsg.createdAt);
                 if (aiMsg) {
                     aiMsgContent = aiMsg.content;
-                    if (/not covered/i.test(aiMsg.content)) {
+                    if (/covered in the current HR policy/i.test(aiMsg.content)) {
                         isGap = true;
                     }
                 }
