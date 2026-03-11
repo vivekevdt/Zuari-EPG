@@ -197,13 +197,13 @@ export const getThematicClusters = async (req, res) => {
         const { entity, period } = req.query;
 
         const { startDate, now } = getPeriodRange(period);
-     
+
 
         // Entity filter for User/MessageThemeLog
         const entityUserIds = await getUserIdsByEntity(entity);
         const entityFilter = entityUserIds ? { userId: { $in: entityUserIds } } : {};
 
-        // 1. Fetch all theme logs across all time (period filter removed)
+        // 1. Fetch all theme logs across all time
         const logs = await MessageThemeLog.find({
             ...entityFilter
         }).lean();
@@ -212,15 +212,24 @@ export const getThematicClusters = async (req, res) => {
             return res.json({ data: { resolved: [], gaps: [] } });
         }
 
-        // 2. Identify conversations that had an AI fallback ("not covered")
-        const conversationIds = [...new Set(logs.map(l => l.conversationId))];
-        const gapConversations = await Message.find({
-            conversationId: { $in: conversationIds },
-            role: 'ai',
-            content: { $regex: /not covered/i }
-        }).select('conversationId').lean();
+        // 2. Fetch User and AI messages to accurately determine gap status per query
+        const userMessages = await Message.find({ _id: { $in: logs.map(l => l.messageId) } }).select('conversationId createdAt').lean();
+        const userMsgMap = new Map(userMessages.map(m => [m._id.toString(), m]));
 
-        const gapConvSet = new Set(gapConversations.map(m => m.conversationId.toString()));
+        const conversationIds = [...new Set(logs.map(l => l.conversationId))];
+        const allAiMessages = await Message.find({
+            conversationId: { $in: conversationIds },
+            role: 'ai'
+        }).select('conversationId createdAt content').lean();
+
+        const aiMessagesByConv = {};
+        for (const msg of allAiMessages) {
+            if (!aiMessagesByConv[msg.conversationId]) aiMessagesByConv[msg.conversationId] = [];
+            aiMessagesByConv[msg.conversationId].push(msg);
+        }
+        for (const conv in aiMessagesByConv) {
+            aiMessagesByConv[conv].sort((a, b) => a.createdAt - b.createdAt);
+        }
 
         // 3. Categorize logs into clusters
         const clustersMap = {}; // themeName -> { resolved: [], gaps: [] }
@@ -229,11 +238,31 @@ export const getThematicClusters = async (req, res) => {
             if (!clustersMap[log.themeName]) {
                 clustersMap[log.themeName] = { resolved: [], gaps: [] };
             }
-            const isGap = gapConvSet.has(log.conversationId.toString());
+
+            const userMsg = userMsgMap.get(log.messageId.toString());
+            let isGap = false;
+            let aiMsgContent = "N/A";
+
+            if (userMsg && aiMessagesByConv[log.conversationId]) {
+                const aiMsg = aiMessagesByConv[log.conversationId].find(m => m.createdAt > userMsg.createdAt);
+                if (aiMsg) {
+                    aiMsgContent = aiMsg.content;
+                    if (/not covered/i.test(aiMsg.content)) {
+                        isGap = true;
+                    }
+                }
+            }
+
+            // Prepare sample detail
+            const sampleDetail = {
+                question: log.question,
+                response: aiMsgContent
+            };
+
             if (isGap) {
-                clustersMap[log.themeName].gaps.push(log.question);
+                clustersMap[log.themeName].gaps.push(sampleDetail);
             } else {
-                clustersMap[log.themeName].resolved.push(log.question);
+                clustersMap[log.themeName].resolved.push(sampleDetail);
             }
         }
 
@@ -244,47 +273,27 @@ export const getThematicClusters = async (req, res) => {
         let totalGaps = 0;
 
         for (const [themeName, data] of Object.entries(clustersMap)) {
+            // Deduplicate samples by question string
+            const uniqueResolved = Array.from(new Map(data.resolved.map(item => [item.question, item])).values());
+            const uniqueGaps = Array.from(new Map(data.gaps.map(item => [item.question, item])).values());
+
             const resolvedCount = data.resolved.length;
             const gapsCount = data.gaps.length;
             totalResolved += resolvedCount;
             totalGaps += gapsCount;
 
-            const fetchSampleDetails = async (questions) => {
-                const sampleQuestions = [...new Set(questions)].slice(0, 5);
-                const sampleDetails = [];
-                for (const q of sampleQuestions) {
-                    const log = logs.find(l => l.question === q && l.themeName === themeName);
-                    if (log) {
-                        const userMsg = await Message.findById(log.messageId).select('createdAt').lean();
-                        let aiMsg = null;
-                        if (userMsg) {
-                            aiMsg = await Message.findOne({
-                                conversationId: log.conversationId,
-                                role: 'ai',
-                                createdAt: { $gt: userMsg.createdAt }
-                            }).sort({ createdAt: 1 }).lean();
-                        }
-                        sampleDetails.push({
-                            question: q,
-                            response: aiMsg ? aiMsg.content : "N/A"
-                        });
-                    }
-                }
-                return sampleDetails;
-            };
-
             if (resolvedCount > 0) {
                 resolvedArray.push({
                     name: themeName,
                     count: resolvedCount,
-                    samples: await fetchSampleDetails(data.resolved)
+                    samples: uniqueResolved.slice(0, 5)
                 });
             }
             if (gapsCount > 0) {
                 gapsArray.push({
                     name: themeName,
                     count: gapsCount,
-                    samples: await fetchSampleDetails(data.gaps)
+                    samples: uniqueGaps.slice(0, 5)
                 });
             }
         }
