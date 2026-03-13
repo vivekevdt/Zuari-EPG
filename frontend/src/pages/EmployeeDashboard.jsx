@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import ChatArea from '../components/ChatArea';
 import CalendarModal from '../components/CalendarModal';
-import { getConversations, getMessages, createConversation, sendMessage, deleteConversation, getAvailableEmployeePolicies, getDynamicFAQs } from '../api';
+import OnboardingModal from '../components/OnboardingModal';
+import PeriodicFeedbackModal from '../components/PeriodicFeedbackModal';
+import { getConversations, getMessages, createConversation, sendMessage, deleteConversation, getAvailableEmployeePolicies, getDynamicFAQs, submitFeedback, submitGeneralFeedback } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 const EmployeeDashboard = () => {
@@ -34,6 +36,70 @@ const EmployeeDashboard = () => {
     const [dynamicFaqs, setDynamicFaqs] = useState([]);
     const [isFaqLoading, setIsFaqLoading] = useState(true);
     const [selectedPolicyTitle, setSelectedPolicyTitle] = useState(null);
+    const [showOnboarding, setShowOnboarding] = useState(false);
+    const [showPeriodicFeedback, setShowPeriodicFeedback] = useState(false);
+
+    // Get user email safely for storage keys
+    const getUserEmail = () => {
+        try {
+            const userInfo = localStorage.getItem('userInfo');
+            return userInfo ? (JSON.parse(userInfo).email || 'default') : 'default';
+        } catch (e) {
+            return 'default';
+        }
+    };
+
+    useEffect(() => {
+        const userEmail = getUserEmail();
+        const visitKey = `dashboard_visits_${userEmail}`;
+        const sessionVisitKey = `session_active_${userEmail}`;
+        const onboardingKey = `onboarding_completed_${userEmail}`;
+
+        const hasIncrementedSession = sessionStorage.getItem(sessionVisitKey);
+        let visits = parseInt(localStorage.getItem(visitKey) || '0', 10);
+
+        // Increment visit count only once per browser tab session
+        if (!hasIncrementedSession) {
+            visits += 1;
+            localStorage.setItem(visitKey, visits.toString());
+            sessionStorage.setItem(sessionVisitKey, 'true');
+        }
+
+        const onboardingCompleted = localStorage.getItem(onboardingKey);
+        const feedbackCompletedKey = `feedback_completed_visit_${visits}_${userEmail}`;
+        const feedbackCompletedForThisVisit = localStorage.getItem(feedbackCompletedKey);
+
+
+        if (!onboardingCompleted && visits === 1) {
+            setShowOnboarding(true);
+        } else if (visits > 1 && visits % 3 === 0 && !feedbackCompletedForThisVisit) {
+            setShowPeriodicFeedback(true);
+        }
+    }, []);
+
+    const handleOnboardingComplete = () => {
+        const userEmail = getUserEmail();
+        localStorage.setItem(`onboarding_completed_${userEmail}`, 'true');
+        setShowOnboarding(false);
+    };
+
+    const handlePeriodicFeedbackSubmit = async (feedbackData) => {
+        const userEmail = getUserEmail();
+        const visits = parseInt(localStorage.getItem(`dashboard_visits_${userEmail}`) || '0', 10);
+        localStorage.setItem(`feedback_completed_visit_${visits}_${userEmail}`, 'true');
+
+        try {
+            await submitGeneralFeedback({
+                rating: feedbackData.rating,
+                improvementAreas: feedbackData.improvementAreas,
+                successAreas: feedbackData.successAreas,
+                comment: feedbackData.suggestions || ''
+            });
+        } catch (error) {
+            console.error("Failed to submit periodic feedback:", error);
+        }
+        setShowPeriodicFeedback(false);
+    };
 
     useEffect(() => {
         // Apply dashboard-specific body classes on mount
@@ -127,8 +193,9 @@ const EmployeeDashboard = () => {
     };
 
     const sendMsgAPI = async (sessionId, content) => {
+        const tempId = Date.now().toString();
         const tempUserMsg = {
-            _id: Date.now().toString(),
+            _id: tempId,
             role: 'user',
             content,
             updatedAt: new Date().toISOString()
@@ -138,10 +205,14 @@ const EmployeeDashboard = () => {
 
         try {
             const response = await sendMessage(sessionId, content, selectedPolicyTitle);
-            const { botMessage } = response;
-            setMessages(prev => [...prev, botMessage]);
+            const { userMessage, botMessage } = response;
+
+            // Replace the temporary user message with the real one from backend (which has real _id)
+            setMessages(prev => prev.map(m => m._id === tempId ? userMessage : m).concat(botMessage));
         } catch (error) {
             console.error("Failed to send message:", error);
+            // Optionally remove the temp message on error
+            setMessages(prev => prev.filter(m => m._id !== tempId));
         } finally {
             setIsLoading(false);
         }
@@ -177,64 +248,71 @@ const EmployeeDashboard = () => {
             <div className="ambient-glow glow-1"></div>
             <div className="ambient-glow glow-2"></div>
 
-            {/* Switch to Admin View — fixed pill, only for dual-role users */}
-            {isAlsoAdmin && (
-                <button
-                    onClick={() => navigate('/admin/dashboard')}
-                    className="fixed top-4 right-4 z-100 flex items-center gap-2 px-4 py-2 rounded-xl
+            <div id="main-chat-interface" className={`flex w-full h-[100dvh] absolute inset-0 transition-all duration-500 ${(showOnboarding || showPeriodicFeedback) ? 'content-blurred' : ''}`}>
+
+                {/* Switch to Admin View — fixed pill, only for dual-role users */}
+                {isAlsoAdmin && (
+                    <button
+                        onClick={() => navigate('/admin/dashboard')}
+                        className="fixed top-4 right-4 z-100 flex items-center gap-2 px-4 py-2 rounded-xl
                                bg-zuari-navy/90 hover:bg-zuari-navy text-white text-sm font-bold
                                shadow-lg shadow-blue-900/30 backdrop-blur-md border border-white/10
                                transition-all hover:scale-105 active:scale-95"
-                    title="Switch to Admin Dashboard"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                    Admin View
-                </button>
-            )}
+                        title="Switch to Admin Dashboard"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Admin View
+                    </button>
+                )}
 
-            {/* Mobile Overlay */}
-            <div
-                id="mobileOverlay"
-                className={`fixed inset-0 bg-black/20 z-50 md:hidden ${isSidebarOpen ? 'block' : 'hidden'}`}
-                onClick={() => setIsSidebarOpen(false)}
-            ></div>
+                {/* Mobile Overlay */}
+                <div
+                    id="mobileOverlay"
+                    className={`fixed inset-0 bg-black/20 z-50 md:hidden ${isSidebarOpen ? 'block' : 'hidden'}`}
+                    onClick={() => setIsSidebarOpen(false)}
+                ></div>
 
-            <Sidebar
-                sessions={sessions}
-                activeSessionId={activeSessionId}
-                user={user}
-                onSelectSession={handleSelectSession}
-                onNewChat={handleNewChat}
-                onDeleteSession={handleDeleteSession}
-                onLogout={handleLogout}
-                isOpen={isSidebarOpen}
-                toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                onOpenCalendar={() => { setIsCalendarOpen(true); setIsSidebarOpen(false); }}
-                toggleDarkMode={toggleDarkMode}
-                policies={availablePolicies}
-                selectedPolicyTitle={selectedPolicyTitle}
-                onSelectPolicy={setSelectedPolicyTitle}
-                onOpenPoliciesModal={() => setIsPoliciesModalOpen(true)}
-            />
+                <Sidebar
+                    sessions={sessions}
+                    activeSessionId={activeSessionId}
+                    user={user}
+                    onSelectSession={handleSelectSession}
+                    onNewChat={handleNewChat}
+                    onDeleteSession={handleDeleteSession}
+                    onLogout={handleLogout}
+                    isOpen={isSidebarOpen}
+                    toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onOpenCalendar={() => { setIsCalendarOpen(true); setIsSidebarOpen(false); }}
+                    toggleDarkMode={toggleDarkMode}
+                    policies={availablePolicies}
+                    selectedPolicyTitle={selectedPolicyTitle}
+                    onSelectPolicy={setSelectedPolicyTitle}
+                    onOpenPoliciesModal={() => setIsPoliciesModalOpen(true)}
+                />
 
-            <ChatArea
-                messages={messages}
-                isLoading={isLoading}
-                onSendMessage={handleSendMessage}
-                user={user}
-                toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                toggleDarkMode={toggleDarkMode}
-                dynamicFaqs={dynamicFaqs}
-                isFaqLoading={isFaqLoading}
-                selectedPolicyTitle={selectedPolicyTitle}
-                setSelectedPolicyTitle={setSelectedPolicyTitle}
-                availablePolicies={availablePolicies}
-            />
 
-            <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} />
+                <ChatArea
+                    messages={messages}
+                    isLoading={isLoading}
+                    onSendMessage={handleSendMessage}
+                    user={user}
+                    toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    toggleDarkMode={toggleDarkMode}
+                    dynamicFaqs={dynamicFaqs}
+                    isFaqLoading={isFaqLoading}
+                    selectedPolicyTitle={selectedPolicyTitle}
+                    setSelectedPolicyTitle={setSelectedPolicyTitle}
+                    availablePolicies={availablePolicies}
+                />
+
+                <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} />
+            </div>
+
+            <OnboardingModal isOpen={showOnboarding} onClose={handleOnboardingComplete} />
+            <PeriodicFeedbackModal isOpen={showPeriodicFeedback} onSubmitFeedback={handlePeriodicFeedbackSubmit} onClose={() => setShowPeriodicFeedback(false)} />
 
             {/* Policies Information Modal */}
             {isPoliciesModalOpen && (

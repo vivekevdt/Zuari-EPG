@@ -18,228 +18,102 @@ import {
     List
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { activateAccount, forgotPassword } from '../api';
+import { useMsal as useMsalHook } from '@azure/msal-react';
 import toast, { Toaster } from 'react-hot-toast';
 import womanImg from '../assets/woman.png';
 import minilogo from '../assets/minilogo.png';
 
-const LoginModal = ({ onClose }) => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [showActivation, setShowActivation] = useState(false);
-    const [showForgotPassword, setShowForgotPassword] = useState(false);
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const { login, finalizeLogin } = useAuth();
+const MsIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+        <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+        <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+        <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+    </svg>
+);
 
-    // Prevent scrolling when modal is open
+const LoginModal = ({ onClose }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const { instance } = useMsalHook();
+
     useEffect(() => {
         document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = 'auto';
-        };
+        return () => { document.body.style.overflow = 'auto'; };
     }, []);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
-
+    const handleMicrosoftLogin = async () => {
         try {
-            const userData = await login(email, password);
-
-            if (userData && userData.is_account_activated === false) {
-                setShowActivation(true);
-                setIsLoading(false);
-                return;
-            }
-
-            finalizeLogin(userData);
-
-            // Redirect based on role
-            if (userData.roles?.includes('superAdmin')) window.location.href = '/super-admin/dashboard';
-            else if (userData.roles?.includes('admin')) window.location.href = '/admin/dashboard';
-            else window.location.href = '/chat';
+            setIsLoading(true);
+            await instance.loginRedirect({
+                scopes: ['openid', 'profile', 'User.Read'],
+                redirectUri: import.meta.env.VITE_MS_REDIRECT_URI,
+                prompt: 'select_account',
+            });
         } catch (err) {
-            setError(err.message);
+            setError('Could not start Microsoft login. Please try again.');
             setIsLoading(false);
-        }
-    };
-
-    const handleActivation = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        if (newPassword !== confirmPassword) {
-            setError("Passwords do not match");
-            return;
-        }
-        if (newPassword.length < 6) {
-            setError("Password must be at least 6 characters");
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            await activateAccount(email, password, newPassword);
-            const userData = await login(email, newPassword);
-            setShowActivation(false);
-            setIsLoading(false);
-            finalizeLogin(userData);
-
-            // Redirect based on role
-            if (userData.roles?.includes('superAdmin')) window.location.href = '/super-admin/dashboard';
-            else if (userData.roles?.includes('admin')) window.location.href = '/admin/dashboard';
-            else window.location.href = '/chat';
-        } catch (err) {
-            setError(err.message || "Activation failed");
-            setIsLoading(false);
-        }
-    };
-
-    const handleForgotPassword = async (e) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
-
-        try {
-            await forgotPassword(email);
-            setIsLoading(false);
-            toast.success("Email sent! Please check your inbox.");
-            setShowForgotPassword(false);
-        } catch (err) {
-            setError(err.message || "Failed to send reset email");
-            setIsLoading(false);
-            toast.error(err.message || "Failed to send reset email");
         }
     };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Modal Box Exactly Like Screenshot */}
-            <div className="relative w-full max-w-[420px] bg-[#333745] rounded-xl p-8 shadow-2xl animate-up border border-white/5">
-                {/* Close Button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
-                >
-                    <X className="w-5 h-5" />
-                </button>
-
-                {showActivation ? (
-                    <form onSubmit={handleActivation} className="space-y-6">
-                        <div className="text-center mb-6">
-                            <h3 className="text-xl font-bold text-white uppercase tracking-wider">Activate Account</h3>
+            <div className="relative w-full max-w-[380px] rounded-2xl shadow-2xl border border-white/10 overflow-hidden backdrop-blur-xl"
+                style={{ background: 'rgba(15, 22, 35, 0.65)' }}>
+                <div className="p-8">
+                    {/* Header */}
+                    <div className="flex justify-between items-start mb-8">
+                        <div>
+                            <h2 className="text-[24px] font-bold text-white leading-tight">Welcome back</h2>
+                            <p className="text-white/40 text-[13px] mt-1">Sign in to access your dashboard</p>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-extrabold uppercase tracking-wider text-white">New Password</label>
-                            <input
-                                type="password"
-                                required
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full bg-[#ebf0fc] text-slate-800 rounded-lg py-3.5 px-4 outline-none text-sm font-medium transition-all focus:ring-2 focus:ring-[#1c3a6f]"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-extrabold uppercase tracking-wider text-white">Confirm Password</label>
-                            <input
-                                type="password"
-                                required
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full bg-[#ebf0fc] text-slate-800 rounded-lg py-3.5 px-4 outline-none text-sm font-medium transition-all focus:ring-2 focus:ring-[#1c3a6f]"
-                            />
-                        </div>
-                        {error && <div className="text-red-300 text-xs px-2 font-bold bg-black/20 p-2 rounded">{error}</div>}
-                        <button type="submit" disabled={isLoading} className="w-full bg-[#203a70] hover:bg-[#152b54] text-white font-bold py-3.5 rounded-lg transition-all mt-6 text-[15px]">
-                            {isLoading ? 'Activating...' : 'Activate & Login'}
+                        <button onClick={onClose} className="text-white/30 hover:text-white transition-colors mt-1">
+                            <X className="w-5 h-5" />
                         </button>
-                    </form>
-                ) : showForgotPassword ? (
-                    <form onSubmit={handleForgotPassword} className="space-y-6">
-                        <div className="text-center mb-6">
-                            <h3 className="text-xl font-bold text-white uppercase tracking-wider">Reset Password</h3>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-extrabold uppercase tracking-wider text-white">Work Email</label>
-                            <input
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-[#ebf0fc] text-slate-800 rounded-lg py-3.5 px-4 outline-none text-sm font-medium transition-all focus:ring-2 focus:ring-[#1c3a6f]"
-                            />
-                        </div>
-                        {error && <div className="text-red-300 text-xs px-2 font-bold bg-black/20 p-2 rounded">{error}</div>}
-                        <div className="flex gap-4 mt-6">
-                            <button type="button" onClick={() => { setShowForgotPassword(false); setError(''); }} className="flex-1 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold transition-all text-[15px]">
-                                Cancel
-                            </button>
-                            <button type="submit" disabled={isLoading} className="flex-1 py-3.5 bg-[#203a70] hover:bg-[#152b54] text-white rounded-lg font-bold transition-all text-[15px]">
-                                {isLoading ? 'Sending...' : 'Send'}
-                            </button>
-                        </div>
-                    </form>
-                ) : (
-                    <form onSubmit={handleSubmit} className="space-y-6 pt-2">
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-extrabold uppercase tracking-wider text-white">Work Email</label>
-                            <input
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-[#ebf0fc] text-slate-800 rounded-lg py-3 px-4 outline-none text-[15px] font-medium transition-all focus:ring-2 focus:ring-[#1c3a6f]"
-                            />
-                        </div>
+                    </div>
 
-                        <div className="space-y-3">
-                            <div className="space-y-2">
-                                <label className="text-[11px] font-extrabold uppercase tracking-wider text-white">Password</label>
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-[#ebf0fc] text-slate-800 rounded-lg py-3 px-4 outline-none text-[15px] font-medium transition-all focus:ring-2 focus:ring-[#1c3a6f]"
-                                />
+                    {/* Logo */}
+                    <div className="flex justify-center mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-white/10 p-3 rounded-xl border border-white/10">
+                                <MessageSquare className="text-white w-6 h-6" />
                             </div>
-
-                            <div className="text-right pb-1 pt-1">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowForgotPassword(true); setError(''); }}
-                                    className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#d1e0ff] hover:text-white transition-colors"
-                                >
-                                    Forgot Password?
-                                </button>
-                            </div>
+                            <span className="text-[28px] font-bold tracking-tight text-white">AskHR</span>
                         </div>
+                    </div>
 
-                        {error && (
-                            <div className="text-red-300 text-xs px-2 font-bold bg-black/20 p-2 rounded">{error}</div>
+                    {error && (
+                        <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-4 text-center">{error}</p>
+                    )}
+
+                    {/* Microsoft SSO button */}
+                    <button
+                        onClick={handleMicrosoftLogin}
+                        disabled={isLoading}
+                        className="w-full py-3.5 rounded-xl font-semibold text-white text-sm bg-gradient-to-r from-[#1A3673] to-[#3B82F6] hover:from-[#152b54] hover:to-[#2563eb] transition-all flex items-center justify-center gap-3 disabled:opacity-60 shadow-lg"
+                    >
+                        {isLoading ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <MsIcon />
                         )}
+                        {isLoading ? 'Redirecting to Microsoft…' : 'Continue with Microsoft'}
+                    </button>
 
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full bg-[#203a70] hover:bg-[#152b54] text-white font-bold py-3.5 rounded-lg transition-all shadow-md mt-4 text-[15px]"
-                        >
-                            {isLoading ? 'Authenticating...' : 'Log In to Dashboard'}
-                        </button>
-                    </form>
-                )}
+                    <p className="text-white/25 text-[11px] text-center mt-4">
+                        Only authorised Zuari employees can sign in
+                    </p>
+                </div>
             </div>
         </div>
     );
 };
 
 const HomePage = () => {
+
+
     const { user } = useAuth();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);

@@ -26,12 +26,13 @@ const createNewConversation = async (userId, title = 'New Conversation') => {
     });
 };
 
-const saveMessage = async (conversationId, userId, role, content) => {
+const saveMessage = async (conversationId, userId, role, content, policyName = null) => {
     return await Message.create({
         conversationId,
         userId,
         role,
         content,
+        policyName,
     });
 };
 

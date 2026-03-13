@@ -32,6 +32,7 @@ import {
     getEmployeeCategories, createEmployeeCategory, updateEmployeeCategory, deleteEmployeeCategory,
     getPolicyCategories, createPolicyCategory, updatePolicyCategory, deletePolicyCategory,
 } from '../controllers/configController.js';
+import { getQueryFeedbacks, getUserFeedbacks } from '../controllers/feedbackController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 // Admin middleware to ensure user is admin
@@ -168,5 +169,9 @@ router.route('/config/policy-categories')
 router.route('/config/policy-categories/:id')
     .put(protect, admin, updatePolicyCategory)
     .delete(protect, admin, deletePolicyCategory);
+
+// Feedback
+router.get('/feedbacks/queries', protect, admin, getQueryFeedbacks);
+router.get('/feedbacks/users', protect, admin, getUserFeedbacks);
 
 export default router;

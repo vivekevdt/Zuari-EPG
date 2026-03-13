@@ -1,7 +1,7 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @plugin "@tailwindcss/typography";
 @custom-variant dark (&:is(.dark *));
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @theme {
   --font-sans: 'Inter', sans-serif;
@@ -55,7 +55,12 @@
     transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease;
     @apply antialiased;
   }
+
+  button, a, [role="button"] {
+    cursor: pointer;
+  }
 }
+
 
 @layer utilities {
   .bg-grid {
@@ -223,5 +228,32 @@
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: rgba(59, 130, 246, 0.2);
     border-radius: 10px;
+  }
+
+  .content-blurred {
+    filter: blur(12px) brightness(0.9);
+    pointer-events: none;
+    transform: scale(0.98);
+  }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease forwards;
+  }
+
+  @keyframes modalScale { 
+    from { opacity: 0; transform: scale(0.9) translateY(30px); } 
+    to { opacity: 1; transform: scale(1) translateY(0); } 
+  }
+  .animate-modalScale {
+    animation: modalScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes growUp {
+    from { transform: scaleY(0); opacity: 0; }
+    to { transform: scaleY(1); opacity: 1; }
+  }
+  .animate-grow {
+    transform-origin: bottom;
+    animation: growUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
 }

@@ -92,18 +92,29 @@ const SuperAdminLayout = () => {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.path}
-                            onClick={() => navigate(item.path)}
-                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-blue-600 shadow-md shadow-blue-900/40 text-white' : 'text-blue-100 hover:bg-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}
-                        >
-                            <div className={`${location.pathname === item.path ? 'text-white' : 'text-blue-200 group-hover:text-white dark:text-slate-400 dark:group-hover:text-white'}`}>
-                                {item.icon}
-                            </div>
-                            {isSidebarOpen && <span className="font-semibold text-sm tracking-wide">{item.label}</span>}
-                        </button>
-                    ))}
+                    {menuItems.map((item, idx) => {
+                        if (item.type === 'header') {
+                            return isSidebarOpen ? (
+                                <div key={idx} className="px-4 pt-6 pb-2 text-[10px] font-black text-blue-300/50 uppercase tracking-[0.2em] dark:text-slate-500">
+                                    {item.label}
+                                </div>
+                            ) : (
+                                <div key={idx} className="h-px bg-white/10 dark:bg-slate-800 my-4 mx-4"></div>
+                            );
+                        }
+                        return (
+                            <button
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path ? 'bg-blue-600 shadow-md shadow-blue-900/40 text-white' : 'text-blue-100 hover:bg-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}
+                            >
+                                <div className={`${location.pathname === item.path ? 'text-white' : 'text-blue-200 group-hover:text-white dark:text-slate-400 dark:group-hover:text-white'}`}>
+                                    {item.icon}
+                                </div>
+                                {isSidebarOpen && <span className="font-semibold text-sm tracking-wide">{item.label}</span>}
+                            </button>
+                        );
+                    })}
                 </nav>
 
                 <div className="p-4 bg-black/10 dark:bg-slate-800/30 border-t border-white/10 dark:border-slate-800 flex items-center gap-3 mt-auto flex-wrap">

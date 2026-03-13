@@ -11,12 +11,16 @@ import AdminPolicies from './pages/admin/AdminPolicies';
 import AdminInteractions from './pages/admin/AdminInteractions';
 import AdminEmployees from './pages/admin/AdminEmployees';
 import AdminConfig from './pages/admin/AdminConfig';
+import AdminInsights from './pages/admin/AdminInsights';
 import SuperAdminLayout from './pages/superadmin/SuperAdminLayout';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminVectorDb from './pages/superadmin/SuperAdminVectorDb';
 import SuperAdminFeedbacks from './pages/superadmin/SuperAdminFeedbacks';
 import SuperAdminInteractions from './pages/superadmin/SuperAdminInteractions';
+import AdminFeedbackAnalysis from './pages/admin/AdminFeedbackAnalysis';
 import Playground from './pages/Playground';
+import AuthCallback from './pages/AuthCallback';
+import SuperAdminLogin from './pages/superadmin/SuperAdminLogin';
 
 const SuperAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -77,6 +81,12 @@ function App() {
       <Toaster position="top-center" />
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
+        
+        <Route path="/superadmin/login" element={
+          <PublicRoute>
+            <SuperAdminLogin />
+          </PublicRoute>
+        } />
 
         <Route path="/" element={<HomePage />} />
 
@@ -103,6 +113,8 @@ function App() {
           <Route path="user-management" element={<AdminEmployees />} />
           <Route path="config" element={<AdminConfig />} />
           <Route path="playground" element={<Playground />} />
+          <Route path="insights" element={<AdminInsights />} />
+          <Route path="feedback-analysis" element={<AdminFeedbackAnalysis />} />
         </Route>
 
         {/* Super Admin Routes */}
@@ -118,6 +130,9 @@ function App() {
           <Route path="feedbacks" element={<SuperAdminFeedbacks />} />
           <Route path="interactions" element={<SuperAdminInteractions />} />
         </Route>
+
+        {/* Microsoft SSO callback — must be before the wildcard */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

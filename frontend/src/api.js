@@ -1,61 +1,27 @@
 const API_URL = import.meta.env.VITE_BACKEND_URL || "";
 
-export const loginUser = async (email, password) => {
-    try {
-        const response = await fetch(`${API_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Login failed');
-        }
-        return data.data; // Ensure this matches backend response structure
-    } catch (error) {
-        throw error;
-    }
+export const microsoftLogin = async (idToken) => {
+    const response = await fetch(`${API_URL}/api/auth/microsoft-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Microsoft login failed');
+    return data.data;
 };
 
-export const activateAccount = async (email, currentPassword, newPassword) => {
-    try {
-        const response = await fetch(`${API_URL}/api/auth/activate-account`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, currentPassword, newPassword }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Activation failed');
-        }
-        return data.data;
-    } catch (error) {
-        throw error;
-    }
+export const login = async (email, password) => {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Login failed');
+    return data.data;
 };
 
-export const forgotPassword = async (email) => {
-    try {
-        const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Forgot password failed');
-        }
-        return data;
-    } catch (error) {
-        throw error;
-    }
-};
 
 const getAuthHeaders = () => {
     const userInfo = localStorage.getItem('userInfo');
@@ -738,12 +704,12 @@ export const deletePolicyCategory = async (id) => {
     return d;
 };
 
-export const submitFeedback = async ({ userQuestion, aiResponse, thumbs, description }) => {
+export const submitFeedback = async ({ queryId, responseId, userQuestion, aiResponse, thumbs, description }) => {
     try {
         const response = await fetch(`${API_URL}/api/chat/feedback`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ userQuestion, aiResponse, thumbs, description }),
+            body: JSON.stringify({ queryId, responseId, userQuestion, aiResponse, thumbs, description }),
         });
         const data = await response.json();
         if (!response.ok) {
@@ -755,16 +721,50 @@ export const submitFeedback = async ({ userQuestion, aiResponse, thumbs, descrip
     }
 };
 
+export const submitGeneralFeedback = async ({ rating, category, improvementAreas, successAreas, comment }) => {
+    try {
+        const response = await fetch(`${API_URL}/api/chat/user-feedback`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ rating, category, improvementAreas, successAreas, comment }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to submit general feedback');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const getFeedbacksAdmin = async (filters = {}) => {
     try {
         const queryParams = new URLSearchParams(filters).toString();
-        const response = await fetch(`${API_URL}/api/super-admin/feedbacks?${queryParams}`, {
+        const response = await fetch(`${API_URL}/api/super-admin/feedbacks/queries?${queryParams}`, {
             method: 'GET',
             headers: getAuthHeaders(),
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || 'Failed to fetch feedbacks');
+            throw new Error(data.message || 'Failed to fetch query feedbacks');
+        }
+        return data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const getUserFeedbacksAdmin = async (filters = {}) => {
+    try {
+        const queryParams = new URLSearchParams(filters).toString();
+        const response = await fetch(`${API_URL}/api/super-admin/feedbacks/users?${queryParams}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch user feedbacks');
         }
         return data;
     } catch (error) {
@@ -787,4 +787,51 @@ export const getInteractionsAdmin = async (filters = {}) => {
     } catch (error) {
         throw error;
     }
+};
+
+// ── Insights API ──────────────────────────────────────────────────────────────
+
+export const getInsightsEntities = async () => {
+    const res = await fetch(`${API_URL}/api/admin/insights/entities`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch entities');
+    return data.data;
+};
+
+export const getInsightsAdoption = async ({ entity = 'all', period = '30' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/adoption?entity=${entity}&period=${period}`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch adoption data');
+    return data.data;
+};
+
+export const getInsightsThematicClusters = async ({ entity = 'all', period = '30' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/thematic-clusters?entity=${entity}&period=${period}`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch thematic clusters');
+    return data.data;
+};
+
+export const getInsightsFeedbackAnalysis = async ({ entity = 'all', level = 'all', search = '' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/feedback-analysis?entity=${entity}&level=${level}&search=${search}`, { headers: getAuthHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to fetch feedback analysis');
+    return data.data;
+};
+
+export const exportInsightsFeedbackAnalysisCSV = async ({ entity = 'all', level = 'all', search = '' } = {}) => {
+    const res = await fetch(`${API_URL}/api/admin/insights/feedback-analysis/export?entity=${entity}&level=${level}&search=${search}`, { headers: getAuthHeaders() });
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to export CSV');
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `user_feedback_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
 };

@@ -1,6 +1,7 @@
 import chatService from '../services/chatService.js';
 import aiService from '../services/aiService.js';
 import { createLog } from '../utils/logger.js';
+import { classifyAndRecord } from '../services/themeService.js';
 
 // @desc    Create a new conversation
 // @route   POST /api/chat/conversation
@@ -104,6 +105,21 @@ const sendMessage = async (req, res, next) => {
 
         await createLog(req.user._id, req.user.name, req.user.roles?.join(', ') || 'employee', req.user.entity, `Prompted AI: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
 
+        // 1.5 Fire-and-forget: classify this question into a theme (never blocks the response)
+        try {
+            classifyAndRecord({
+                messageId: userMessage._id,
+                userId: req.user._id,
+                conversationId: conversation._id,
+                question: content,
+                // Pass raw data, let classifyAndRecord handle lookup if needed
+                entityName: req.user.entity?.name || req.user.entity_code || '',
+                levelName: req.user.level?.name || ''
+            }).catch(err => console.error('Theme classification error (fire-and-forget):', err.message));
+        } catch (err) {
+            console.error('Theme classification initiation failed:', err.message);
+        }
+
         // 2. Fetch recent context
         const recentMessages = await chatService.getRecentMessages(conversation._id);
 
@@ -142,10 +158,10 @@ const sendMessage = async (req, res, next) => {
 
         // 3. Generate Bot Response
         const populatedUser = await req.user.populate(['entity', 'level', 'empCategory']);
-        const botContent = await aiService.generateAIResponse(recentMessages, populatedUser, selectedPolicy, availablePoliciesList);
+        const { content: botContent, policyName } = await aiService.generateAIResponse(recentMessages, populatedUser, selectedPolicy, availablePoliciesList);
 
-        // 4. Save Bot Message
-        const botMessage = await chatService.saveMessage(conversation._id, req.user._id, 'ai', botContent);
+        // 5. Save Bot Message
+        const botMessage = await chatService.saveMessage(conversation._id, req.user._id, 'ai', botContent, policyName);
 
         // 5. Update Conversation lastMessage
         await chatService.updateLastMessage(conversation._id, botContent);

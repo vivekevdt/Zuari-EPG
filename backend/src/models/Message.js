@@ -29,6 +29,11 @@ const messageSchema = new mongoose.Schema(
     tokensUsed: {
       type: Number,
       default: 0
+    },
+
+    policyName: {
+      type: String,
+      default: null
     }
   },
   { timestamps: true }

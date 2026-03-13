@@ -22,6 +22,7 @@
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "hr-policy-chatbot": "file:..",
+    "jose": "^6.2.1",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.11.0",
     "mongoose": "^9.1.6",

@@ -14,16 +14,18 @@ const userSchema = new mongoose.Schema(
       lowercase: true
     },
 
+    password: {
+      type: String,
+      required: false, // Not required since employees use SSO
+      select: false, // Don't return by default
+    },
+
     gender: {
       type: String,
       enum: ['Male', 'Female', 'Other'],
       default: 'Male'
     },
 
-    password: {
-      type: String,
-      required: true
-    },
 
     // ── Linked to config collections via ObjectId ─────────────────────────
     entity: {
