@@ -19,6 +19,7 @@ import SuperAdminFeedbacks from './pages/superadmin/SuperAdminFeedbacks';
 import SuperAdminInteractions from './pages/superadmin/SuperAdminInteractions';
 import AdminFeedbackAnalysis from './pages/admin/AdminFeedbackAnalysis';
 import Playground from './pages/Playground';
+import AuthCallback from './pages/AuthCallback';
 
 const SuperAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -122,6 +123,9 @@ function App() {
           <Route path="feedbacks" element={<SuperAdminFeedbacks />} />
           <Route path="interactions" element={<SuperAdminInteractions />} />
         </Route>
+
+        {/* Microsoft SSO callback — must be before the wildcard */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

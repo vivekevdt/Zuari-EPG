@@ -1,5 +1,8 @@
 import authService from '../services/authService.js';
 import { createLog } from '../utils/logger.js';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+import User from '../models/User.js';
+import generateToken from '../utils/generateToken.js';
 
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
@@ -122,10 +125,92 @@ const forgotPassword = async (req, res, next) => {
     }
 };
 
+// @desc    Microsoft SSO Login — verify idToken, look up user, return our JWT
+// @route   POST /api/auth/microsoft-login
+// @access  Public
+const microsoftLogin = async (req, res, next) => {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            res.status(400);
+            throw new Error('idToken is required');
+        }
+
+        const tenantId = process.env.MS_TENANT_ID?.trim();
+        const clientId = process.env.MS_CLIENT_ID?.trim();
+
+        if (!tenantId || !clientId) {
+            throw new Error('MS_TENANT_ID and MS_CLIENT_ID must be set in backend .env');
+        }
+
+        // Fetch Microsoft's public signing keys via JWKS
+        const JWKS = createRemoteJWKSet(
+            new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`)
+        );
+
+        // Verify the idToken signature, issuer, and audience
+        const { payload } = await jwtVerify(idToken, JWKS, {
+            issuer: [
+                `https://login.microsoftonline.com/${tenantId}/v2.0`,
+                `https://sts.windows.net/${tenantId}/`,
+            ],
+            audience: clientId,
+        });
+
+        // Extract email from token claims (preferred_username is the UPN/email in Azure AD)
+        const email = (payload.email || payload.preferred_username || '').toLowerCase().trim();
+
+        if (!email) {
+            res.status(401);
+            throw new Error('Could not extract email from Microsoft token');
+        }
+
+        // Look up user in our database
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            res.status(403);
+            throw new Error(
+                `Your Microsoft account (${email}) is not registered in the system. ` +
+                'Please contact your administrator.'
+            );
+        }
+
+        // Log the Microsoft SSO login event
+        await createLog(
+            user._id,
+            user.name,
+            user.roles?.join(', ') || 'employee',
+            user.entity,
+            'User Logged In via Microsoft SSO'
+        );
+
+        // Return the same shape as normal login — our JWT, not Microsoft's token
+        res.status(200).json({
+            statusCode: 200,
+            success: true,
+            data: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                gender: user.gender,
+                roles: user.roles,
+                entity: user.entity,
+                is_account_activated: user.is_account_activated,
+                token: generateToken(user._id, user.name, user.email),
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export {
     authUser,
     registerUser,
     logoutUser,
     activateAccount,
-    forgotPassword
+    forgotPassword,
+    microsoftLogin
 };

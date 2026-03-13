@@ -57,6 +57,32 @@ export const forgotPassword = async (email) => {
     }
 };
 
+/**
+ * Microsoft SSO Login
+ * Sends the raw idToken from MSAL to our backend.
+ * Backend verifies the token with Microsoft JWKS, looks up the user,
+ * and returns our own JWT (same shape as normal login response).
+ */
+export const microsoftLogin = async (idToken) => {
+    try {
+        const response = await fetch(`${API_URL}/api/auth/microsoft-login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ idToken }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Microsoft login failed');
+        }
+        return data.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 const getAuthHeaders = () => {
     const userInfo = localStorage.getItem('userInfo');
     if (userInfo) {
