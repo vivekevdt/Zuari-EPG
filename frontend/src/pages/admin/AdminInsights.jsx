@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Info } from 'lucide-react';
 import {
     getInsightsAdoption,
     getInsightsThematicClusters,
@@ -35,17 +36,26 @@ const statColors = {
     purple: 'from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800',
 };
 
-const StatCard = ({ label, value, delta, subText, color }) => {
+const StatCard = ({ label, value, delta, subText, color, info }) => {
     const deltaColors = { up: 'text-emerald-600 dark:text-emerald-400', down: 'text-red-500 dark:text-red-400', neutral: 'text-slate-500 dark:text-slate-400' };
     const deltaSymbols = { up: '↑', down: '↓', neutral: '→' };
 
+    const displayDelta = delta?.value 
+
     return (
         <div className={`bg-gradient-to-br ${statColors[color]} border rounded-2xl p-4 shadow-sm flex flex-col justify-between`}>
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{label}</div>
+            <div className="flex justify-between items-start mb-1 relative z-10">
+                <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</div>
+                {info && (
+                    <div title={info} className="cursor-help p-1 bg-white/50 dark:bg-slate-800/50 rounded-full hover:bg-white dark:hover:bg-slate-800 transition-colors shrink-0 -mt-1 -mr-1">
+                        <Info className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                    </div>
+                )}
+            </div>
             <div className="text-4xl font-black text-slate-900 dark:text-white mb-2">{value !== undefined ? value : '—'}</div>
             {delta && (
                 <div className="text-xs text-slate-500 dark:text-slate-400 flex gap-1.5 items-center flex-wrap mt-auto">
-                    <span className={`font-bold ${deltaColors[delta.type]}`}>{deltaSymbols[delta.type]} {delta.value}{delta.type !== 'neutral' ? '%' : ''}</span>
+                    <span className={`font-bold ${deltaColors[delta.type]}`}>{deltaSymbols[delta.type]} {displayDelta}{delta.type !== 'neutral' ? '%' : ''}</span>
                     <span>{subText}</span>
                 </div>
             )}
@@ -144,6 +154,7 @@ const AdminInsights = () => {
                                 delta={adoption.totalInquiries?.delta}
                                 subText={`unique sessions ${periodLabel}`}
                                 color="blue"
+                                info="Total number of unique user sessions recorded."
                             />
                             <StatCard
                                 label="AI Resolution Rate"
@@ -151,6 +162,7 @@ const AdminInsights = () => {
                                 delta={adoption.aiResolutionRate?.delta}
                                 subText={`resolved by AI ${periodLabel}`}
                                 color="green"
+                                info="Percentage of inquiries successfully resolved by the AI without human intervention."
                             />
                             <StatCard
                                 label="HR Time Saved"
@@ -164,6 +176,7 @@ const AdminInsights = () => {
                                 delta={adoption.hrTimeSaved?.delta}
                                 subText={`efficiency gain ${periodLabel}`}
                                 color="amber"
+                                info="Estimated total HR time saved by automating resolutions."
                             />
                             <StatCard
                                 label="Human Handoff Rate"
@@ -171,11 +184,17 @@ const AdminInsights = () => {
                                 delta={adoption.humanHandoffRate?.delta}
                                 subText={`escalated to HR ${periodLabel}`}
                                 color="red"
+                                info="Percentage of inquiries escalated to human HR representatives."
                             />
 
                             <div className={`bg-gradient-to-br ${statColors.purple} border rounded-2xl p-4 shadow-sm flex flex-col justify-between`}>
-                                <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 leading-none flex items-center gap-2">
-                                    User Feedback
+                                <div className="flex justify-between items-start mb-1 relative z-10">
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none flex items-center gap-2">
+                                        User Feedback
+                                    </div>
+                                    <div title="Thumbs up vs Thumbs down responses recorded from employees." className="cursor-help p-1 bg-white/50 dark:bg-slate-800/50 rounded-full hover:bg-white dark:hover:bg-slate-800 transition-colors shrink-0 -mt-1 -mr-1">
+                                        <Info className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                                    </div>
                                 </div>
                                 <div className="flex justify-between gap-4 mb-2">
                                     <div className="flex-1">
@@ -278,8 +297,8 @@ const AdminInsights = () => {
                                 <div className="flex-1 flex items-center justify-between gap-6">
                                     {adoption.policyAccess?.length > 0 ? (
                                         <>
-                                            <div className="relative w-36 h-36">
-                                                <svg width="144" height="144" viewBox="0 0 100 100">
+                                            <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
+                                                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
                                                     {/* Background track (darker for that high-contrast look) */}
                                                     <circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" className="dark:stroke-slate-700" strokeWidth="12" />
 
@@ -313,11 +332,11 @@ const AdminInsights = () => {
                                                         });
                                                     })()}
                                                 </svg>
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                                    <span className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">
+                                                <div className="relative z-10 flex flex-col items-center justify-center pointer-events-none mt-1">
+                                                    <span className="text-3xl font-black text-slate-800 dark:text-slate-100 leading-none">
                                                         {adoption.policyAccess.reduce((a, b) => a + b.count, 0)}
                                                     </span>
-                                                    <span className="text-[10px] text-slate-400 font-medium">queries</span>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">queries</span>
                                                 </div>
                                             </div>
 

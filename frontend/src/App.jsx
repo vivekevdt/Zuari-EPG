@@ -20,6 +20,7 @@ import SuperAdminInteractions from './pages/superadmin/SuperAdminInteractions';
 import AdminFeedbackAnalysis from './pages/admin/AdminFeedbackAnalysis';
 import Playground from './pages/Playground';
 import AuthCallback from './pages/AuthCallback';
+import SuperAdminLogin from './pages/superadmin/SuperAdminLogin';
 
 const SuperAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -80,6 +81,12 @@ function App() {
       <Toaster position="top-center" />
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
+        
+        <Route path="/superadmin/login" element={
+          <PublicRoute>
+            <SuperAdminLogin />
+          </PublicRoute>
+        } />
 
         <Route path="/" element={<HomePage />} />
 

@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import emailService from './emailService.js';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const registerUser = async (name, email, password, roles, entity, level, status, entity_code, empCategory, skipIfExists = false, gender = 'Male') => {
     const userExists = await User.findOne({ email });
@@ -23,9 +25,21 @@ const registerUser = async (name, email, password, roles, entity, level, status,
         }
     }
 
+    const isSuperAdmin = normalizedRoles.includes('superAdmin');
+
+    // Either take the provided password from frontend (if modifying later) or generate one
+    const userPassword = password || (isSuperAdmin ? crypto.randomBytes(8).toString('hex') : undefined);
+    let hashedPassword = undefined;
+
+    if (userPassword) {
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(userPassword, salt);
+    }
+
     const user = await User.create({
         name,
         email,
+        password: hashedPassword,
         roles: normalizedRoles,
         entity: entity || null,
         level: level || null,
@@ -38,6 +52,11 @@ const registerUser = async (name, email, password, roles, entity, level, status,
 
     if (user) {
         // Send welcome email informing them to use SSO
+        // Attach the plaintext generated pass temporarily so we can mail it
+        if (isSuperAdmin && userPassword) {
+            user.temporaryPassword = userPassword;
+        }
+
         await emailService.sendWelcomeEmail(user);
 
         return {

@@ -1,7 +1,69 @@
 import { createLog } from '../utils/logger.js';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
+
+// @desc    Auth user & get token (SuperAdmin Login)
+// @route   POST /api/auth/login
+// @access  Public
+const loginUser = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            res.status(400);
+            throw new Error('Please provide both email and password');
+        }
+
+        // Find user and explicitly select password field
+        const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+
+        if (!user) {
+            res.status(401);
+            throw new Error('Invalid email or password');
+        }
+
+        // Verify it's a superadmin (or admin if allowed, sticking to superadmin as requested)
+        if (!user.roles?.includes('superAdmin')) {
+            res.status(403);
+            throw new Error('This login portal is restricted to authorized Super Admins only.');
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (isMatch) {
+             // Log the login event
+             await createLog(
+                user._id,
+                user.name,
+                user.roles?.join(', ') || 'superAdmin',
+                user.entity,
+                'SuperAdmin Logged In via Credentials'
+            );
+
+            res.status(200).json({
+                statusCode: 200,
+                success: true,
+                data: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    gender: user.gender,
+                    roles: user.roles,
+                    entity: user.entity,
+                    is_account_activated: user.is_account_activated,
+                    token: generateToken(user._id, user.name, user.email),
+                },
+            });
+        } else {
+            res.status(401);
+            throw new Error('Invalid email or password');
+        }
+    } catch (error) {
+        next(error);
+    }
+};
 
 // @desc    Microsoft SSO Login — verify idToken, look up user, return our JWT
 // @route   POST /api/auth/microsoft-login
@@ -125,4 +187,4 @@ const logoutUser = async (req, res, next) => {
     }
 };
 
-export { microsoftLogin, registerUser, logoutUser };
+export { loginUser, microsoftLogin, registerUser, logoutUser };
