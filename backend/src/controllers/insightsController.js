@@ -95,8 +95,8 @@ export const getAdoption = async (req, res) => {
         const prevResolutionRate = prevTotalInquiries > 0 ? Math.round((prevResolvedCount / prevTotalInquiries) * 100) : 0;
 
         // 4. HR Time Saved (efficiency) - Using 10 minutes average manual handling time
-        const hrTimeSavedMinutes = resolvedCount * 10;
-        const prevHrTimeSavedMinutes = prevResolvedCount * 10;
+        const hrTimeSavedMinutes = resolvedCount * 2;
+        const prevHrTimeSavedMinutes = prevResolvedCount * 2;
 
         // 5. Human Handoff / Escalation Rate
         const handoffRate = totalInquiries > 0 ? Math.round((unresolvedQueries / totalInquiries) * 100) : 0;
