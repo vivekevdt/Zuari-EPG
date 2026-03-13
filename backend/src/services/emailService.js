@@ -72,15 +72,17 @@ const sendWelcomeEmail = async (user) => {
             subject: 'Welcome to AskHR - Your Access is Ready',
             html: `
                 <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 10px;">
-                            <div style="background-color: #1A3673; padding: 8px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </div>
-                            <span style="font-size: 24px; font-weight: bold; color: #1A3673; letter-spacing: -0.5px;">AskHR</span>
-                        </div>
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                            <tr>
+                                <td align="center" valign="middle" style="background-color:#1A3673; border-radius:8px; width:40px; height:40px;">
+                                    <img src="https://api.iconify.design/lucide/message-square.svg?color=white" alt="AskHR" width="22" height="22" style="display:block; margin:0 auto;" />
+                                </td>
+                                <td align="left" valign="middle" style="padding-left: 10px;">
+                                    <span style="font-size: 26px; font-weight: bold; color: #1A3673; font-family:Arial,sans-serif; letter-spacing: -0.5px;">AskHR</span>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                     
                     <h2 style="color: #1A3673; margin-top: 0;">Welcome aboard!</h2>
