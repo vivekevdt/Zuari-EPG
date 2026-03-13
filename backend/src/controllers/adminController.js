@@ -24,7 +24,7 @@ const getDashboardStats = async (req, res, next) => {
     try {
         const totalEmployees = await User.countDocuments({ roles: 'employee' });
         const totalEntities = await Entity.countDocuments();
-        const totalInteractions = await Conversation.countDocuments();
+        const totalInteractions = await Message.countDocuments({ role: 'user' });
         const activePolicies = await Policy.countDocuments({ status: 'live' });
         const totalPolicies = await Policy.countDocuments();
 
