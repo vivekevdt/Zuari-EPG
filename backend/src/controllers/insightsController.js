@@ -23,6 +23,8 @@ const getPeriodRange = (period) => {
         startDate.setDate(startDate.getDate() - 90);
     } else if (period === 'year') {
         startDate = new Date(now.getFullYear(), 0, 1);
+    } else if (period === 'all') {
+        startDate = new Date(0); // Jan 1, 1970
     } else if (period === '7') {
         startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 7);
@@ -32,7 +34,11 @@ const getPeriodRange = (period) => {
         startDate.setDate(startDate.getDate() - 7);
     }
     const prevStart = new Date(startDate);
-    prevStart.setTime(prevStart.getTime() - (now - startDate));
+    if (period === 'all') {
+        prevStart.setTime(0); // No delta logic for all-time
+    } else {
+        prevStart.setTime(prevStart.getTime() - (now - startDate));
+    }
     return { startDate, prevStart, now };
 };
 
@@ -54,6 +60,7 @@ export const getAdoption = async (req, res) => {
         const { entity, period } = req.query;
 
         const { startDate, prevStart, now } = getPeriodRange(period);
+        console.log(startDate, prevStart, now)
 
         // Build user ID list if entity filter is applied
         const entityUserIds = await getUserIdsByEntity(entity);
@@ -105,17 +112,45 @@ export const getAdoption = async (req, res) => {
         const uniqueUserIds = await Conversation.distinct('userId', { ...userIdFilter, createdAt: { $gte: startDate, $lte: now } });
         const totalOrgUsers = await User.countDocuments(entityUserIds ? { _id: { $in: entityUserIds }, roles: 'employee' } : { roles: 'employee' });
 
-        // Daily volume chart (staying the same for now)
-        const last7Days = [];
-        for (let i = 6; i >= 0; i--) {
-            const dayStart = new Date(now);
-            dayStart.setDate(dayStart.getDate() - i);
-            dayStart.setHours(0, 0, 0, 0);
-            const dayEnd = new Date(dayStart);
-            dayEnd.setHours(23, 59, 59, 999);
-            const count = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: dayStart, $lte: dayEnd } });
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            last7Days.push({ day: dayNames[dayStart.getDay()], count });
+        // Dynamic volume chart data based on period
+        const volumeData = [];
+        if (period === '90') {
+            // Last 13 weeks
+            for (let i = 12; i >= 0; i--) {
+                const weekStart = new Date(now);
+                weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay());
+                weekStart.setHours(0, 0, 0, 0);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                weekEnd.setHours(23, 59, 59, 999);
+                
+                const count = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: weekStart, $lte: weekEnd } });
+                const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                volumeData.push({ day: `${weekStart.getDate()} ${monthNamesShort[weekStart.getMonth()]}`, count });
+            }
+        } else if (period === 'year' || period === 'all') {
+            // Months for this year or last 12 months
+            const monthsCount = period === 'year' ? now.getMonth() + 1 : 12;
+            for (let i = monthsCount - 1; i >= 0; i--) {
+                const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+                
+                const count = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: monthStart, $lte: monthEnd } });
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                volumeData.push({ day: monthNames[monthStart.getMonth()], count });
+            }
+        } else {
+            // Default/7 days: last 7 days
+            for (let i = 6; i >= 0; i--) {
+                const dayStart = new Date(now);
+                dayStart.setDate(dayStart.getDate() - i);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(dayStart);
+                dayEnd.setHours(23, 59, 59, 999);
+                const count = await Message.countDocuments({ role: 'user', ...userIdFilter, createdAt: { $gte: dayStart, $lte: dayEnd } });
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                volumeData.push({ day: dayNames[dayStart.getDay()], count });
+            }
         }
 
         // Policy access (Aggregated from Message policyName field)
@@ -166,7 +201,7 @@ export const getAdoption = async (req, res) => {
                     helpfulDelta: delta(helpfulCount, prevHelpfulCount),
                     unhelpfulDelta: delta(unhelpfulCount, prevUnhelpfulCount)
                 },
-                dailyVolume: last7Days,
+                dailyVolume: volumeData,
                 policyAccess,
                 // These were in original adoption response, keeping for compatibility if frontend needs them
                 uniqueEmployees: { value: uniqueUserIds.length, total: totalOrgUsers }
@@ -203,9 +238,10 @@ export const getThematicClusters = async (req, res) => {
         const entityUserIds = await getUserIdsByEntity(entity);
         const entityFilter = entityUserIds ? { userId: { $in: entityUserIds } } : {};
 
-        // 1. Fetch all theme logs across all time
+        // 1. Fetch theme logs within the selected period
         const logs = await MessageThemeLog.find({
-            ...entityFilter
+            ...entityFilter,
+            createdAt: { $gte: startDate, $lte: now }
         }).lean();
 
         if (logs.length === 0) {

@@ -66,7 +66,7 @@ const StatCard = ({ label, value, delta, subText, color, info }) => {
 // ── Main Component ────────────────────────────────────────────────────────────
 const AdminInsights = () => {
     const [entity, setEntity] = useState('all');
-    const [period] = useState('7');
+    const [period, setPeriod] = useState('7');
     const [entities, setEntities] = useState([]);
 
     // Load entity list from DB once on mount
@@ -107,7 +107,14 @@ const AdminInsights = () => {
         fetchClusters();
     }, [fetchAdoption, fetchClusters]);
 
-    const periodLabel = 'vs previous week';
+    const getPeriodLabel = () => {
+        if (period === '7') return 'vs previous week';
+        if (period === '90') return 'vs previous quarter';
+        if (period === 'year') return 'vs previous year';
+        return '';
+    };
+
+    const periodLabel = getPeriodLabel();
 
     // compute current active clusters list
     const activeList = activeTab === 'resolved' ? clustersData.resolved : clustersData.gaps;
@@ -131,7 +138,20 @@ const AdminInsights = () => {
                             ))}
                         </select>
                     </div>
-                    {/* Period filter removed as per user request */}
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-all group/period">
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Time Range</span>
+                        <select 
+                            value={period} 
+                            onChange={e => setPeriod(e.target.value)} 
+                            className="bg-transparent font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer text-sm focus:text-blue-600 dark:focus:text-blue-400 transition-colors py-0.5"
+                            style={{ colorScheme: 'dark' }}
+                        >
+                            <option value="7" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Last 7 Days</option>
+                            <option value="90" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Last 90 Days</option>
+                            <option value="year" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">This Year</option>
+                            <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">All Time</option>
+                        </select>
+                    </div>
                     <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white px-3 py-2 rounded-xl shadow-md shadow-emerald-400/30">
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Live
                     </span>
@@ -221,8 +241,12 @@ const AdminInsights = () => {
                             {/* Daily Volume */}
                             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                                 <div className="flex items-center justify-between mb-4">
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Daily Query Volume</span>
-                                    <span className="text-[10px] text-slate-400">Last 7 days</span>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                        {period === '7' ? 'Daily' : period === '90' ? 'Weekly' : 'Monthly'} Query Volume
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">
+                                        {period === '7' ? 'Last 7 Days' : period === '90' ? 'Last 13 Weeks' : 'Trend Analysis'}
+                                    </span>
                                 </div>
                                 {adoption.dailyVolume?.length > 0 ? (
                                     <>
@@ -243,8 +267,9 @@ const AdminInsights = () => {
                                                 return (
                                                     <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
                                                         {/* Tooltip on Hover */}
-                                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-10 shadow-xl border border-slate-700 dark:border-slate-200 translate-y-2 group-hover:translate-y-0 uppercase tracking-widest">
-                                                            {d.count} queries
+                                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-20 shadow-xl border border-slate-700 dark:border-slate-200 translate-y-2 group-hover:translate-y-0 uppercase tracking-widest">
+                                                            <div className="text-[8px] opacity-60 mb-0.5">{period === '7' ? 'Day' : period === '90' ? 'Week of' : 'Month'}</div>
+                                                            {d.day} — {d.count} inquiries
                                                             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 dark:bg-white rotate-45 border-r border-b border-slate-700 dark:border-slate-200"></div>
                                                         </div>
 
