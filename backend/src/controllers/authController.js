@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 
-// @desc    Auth user & get token (SuperAdmin Login)
+// @desc    Auth user & get token (Admin / SuperAdmin Local Login)
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res, next) => {
@@ -24,22 +24,28 @@ const loginUser = async (req, res, next) => {
             throw new Error('Invalid email or password');
         }
 
-        // Verify it's a superadmin (or admin if allowed, sticking to superadmin as requested)
-        if (!user.roles?.includes('superAdmin')) {
+        // Allow superAdmin or admin to log in with local credentials
+        const isPrivilegedUser = user.roles?.includes('superAdmin') || user.roles?.includes('admin');
+        if (!isPrivilegedUser) {
             res.status(403);
-            throw new Error('This login portal is restricted to authorized Super Admins only.');
+            throw new Error('This login portal is restricted to Admins and Super Admins only.');
+        }
+
+        if (!user.password) {
+            res.status(401);
+            throw new Error('No password set for this account. Please contact a Super Admin.');
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-             // Log the login event
-             await createLog(
+            const roleLabel = user.roles?.includes('superAdmin') ? 'SuperAdmin' : 'Admin';
+            await createLog(
                 user._id,
                 user.name,
-                user.roles?.join(', ') || 'superAdmin',
+                user.roles?.join(', ') || 'admin',
                 user.entity,
-                'SuperAdmin Logged In via Credentials'
+                `${roleLabel} Logged In via Credentials`
             );
 
             res.status(200).json({
