@@ -20,10 +20,6 @@ const userSchema = new mongoose.Schema(
       default: 'Male'
     },
 
-    password: {
-      type: String,
-      required: true
-    },
 
     // ── Linked to config collections via ObjectId ─────────────────────────
     entity: {

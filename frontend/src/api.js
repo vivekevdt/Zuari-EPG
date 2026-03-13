@@ -1,85 +1,14 @@
 const API_URL = import.meta.env.VITE_BACKEND_URL || "";
 
-export const loginUser = async (email, password) => {
-    try {
-        const response = await fetch(`${API_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Login failed');
-        }
-        return data.data; // Ensure this matches backend response structure
-    } catch (error) {
-        throw error;
-    }
-};
-
-export const activateAccount = async (email, currentPassword, newPassword) => {
-    try {
-        const response = await fetch(`${API_URL}/api/auth/activate-account`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, currentPassword, newPassword }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Activation failed');
-        }
-        return data.data;
-    } catch (error) {
-        throw error;
-    }
-};
-
-export const forgotPassword = async (email) => {
-    try {
-        const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Forgot password failed');
-        }
-        return data;
-    } catch (error) {
-        throw error;
-    }
-};
-
-/**
- * Microsoft SSO Login
- * Sends the raw idToken from MSAL to our backend.
- * Backend verifies the token with Microsoft JWKS, looks up the user,
- * and returns our own JWT (same shape as normal login response).
- */
 export const microsoftLogin = async (idToken) => {
-    try {
-        const response = await fetch(`${API_URL}/api/auth/microsoft-login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Microsoft login failed');
-        }
-        return data.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await fetch(`${API_URL}/api/auth/microsoft-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Microsoft login failed');
+    return data.data;
 };
 
 

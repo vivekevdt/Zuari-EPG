@@ -1,14 +1,11 @@
 import express from 'express';
-import { authUser, registerUser, logoutUser, activateAccount, forgotPassword, microsoftLogin } from '../controllers/authController.js';
+import { microsoftLogin, registerUser, logoutUser } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/login', authUser);
-router.post('/activate-account', activateAccount);
-router.post('/forgot-password', forgotPassword);
-router.post('/logout', protect, logoutUser);
-router.post('/register', registerUser);
 router.post('/microsoft-login', microsoftLogin);
+router.post('/register', registerUser);
+router.post('/logout', protect, logoutUser);
 
 export default router;

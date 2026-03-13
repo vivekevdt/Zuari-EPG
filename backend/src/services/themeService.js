@@ -2,7 +2,6 @@ import QuestionTheme from '../models/QuestionTheme.js';
 import MessageThemeLog from '../models/MessageThemeLog.js';
 import aiService from './aiService.js';
 
-import { createLog } from '../utils/logger.js';
 
 // ── Classify a question and record the result ─────────────────────────────────
 export const classifyAndRecord = async ({
@@ -15,8 +14,7 @@ export const classifyAndRecord = async ({
     policyName = ''
 }) => {
     try {
-        // Telemetry log to DB so we can verify this is hitting in production
-        await createLog(userId, 'System (Theme)', 'system', null, `Theme classification started: ${question.substring(0, 30)}`);
+      
 
         // 1. Fetch all current predefined themes with definition and examples
         const allThemes = await QuestionTheme.find({ isPredefined: true })

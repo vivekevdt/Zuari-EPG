@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useEffect, useRef } from 'react';
-import { loginUser as loginAPI, microsoftLogin as microsoftLoginAPI } from '../api';
+import { microsoftLogin as microsoftLoginAPI } from '../api';
 import { useMsal } from '@azure/msal-react';
 import { EventType } from '@azure/msal-browser';
 import toast from 'react-hot-toast';
@@ -9,9 +9,9 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true); // true until MSAL redirect is resolved
+    const [loading, setLoading] = useState(true);
     const { instance } = useMsal();
-    const msHandled = useRef(false); // prevent double-processing the same SSO result
+    const msHandled = useRef(false);
 
     // Restore user from localStorage
     useEffect(() => {
@@ -48,27 +48,19 @@ export const AuthProvider = ({ children }) => {
             }
         };
 
-        // handleRedirectPromise() returns the same cached promise as MsalProvider's call,
-        // so we always get the result even if MsalProvider processed the redirect first.
         instance.handleRedirectPromise()
             .then(handleMicrosoftResult)
             .catch(console.error)
             .finally(() => {
-                if (!msHandled.current) setLoading(false); // no redirect — show the app
+                if (!msHandled.current) setLoading(false);
             });
 
-        // Backup: catches LOGIN_SUCCESS on subsequent logins (silent SSO path)
         const id = instance.addEventCallback(async ({ eventType, payload }) => {
             if (eventType === EventType.LOGIN_SUCCESS) await handleMicrosoftResult(payload);
         });
 
         return () => instance.removeEventCallback(id);
     }, [instance]);
-
-    const login = async (email, password) => {
-        const data = await loginAPI(email, password);
-        return data;
-    };
 
     const logout = () => {
         try {
@@ -88,7 +80,6 @@ export const AuthProvider = ({ children }) => {
         setUser(data);
     };
 
-    // Full-screen spinner while MSAL resolves the redirect — prevents page flash
     if (loading) {
         return (
             <div style={{ position: 'fixed', inset: 0, background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -99,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ user, login, finalizeLogin, logout, loading }}>
+        <AuthContext.Provider value={{ user, finalizeLogin, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );
