@@ -20,7 +20,9 @@ const config = {
     ORIGIN3: process.env.ORIGIN3 || 'http://localhost:5175',
     API_URL: process.env.API_URL,
     SMTP_FROM: process.env.SMTP_FROM,
-    SMTP_PASSWORD: process.env.SMTP_PASSWORD
+    SMTP_PASSWORD: process.env.SMTP_PASSWORD,
+    MS_TENANT_ID: (process.env.MS_TENANT_ID || "").trim().replace(/^"|"$/g, ''),
+    MS_CLIENT_ID: (process.env.MS_CLIENT_ID || "").trim().replace(/^"|"$/g, '')
 };
 
 // Validate that important variables are set
