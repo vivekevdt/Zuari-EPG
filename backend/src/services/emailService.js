@@ -42,21 +42,26 @@ const sendWelcomeEmail = async (user) => {
             : 'Employee';
 
         const isSuperAdmin = user.roles && user.roles.includes('superAdmin');
+        const isAdmin = user.roles && user.roles.includes('admin');
+        const isPrivilegedUser = isSuperAdmin || isAdmin;
 
         // Note: It's better not to send plaintext passwords in an automated email if possible, 
-        // however since this is the only way for the super admin to receive their initial auto-generated password
+        // however since this is the only way for the super admin / admin to receive their initial auto-generated password
         // we'll include it here. In a production app it's better to send a secure setup link.
-        const passwordLine = (isSuperAdmin && user.temporaryPassword) 
+        const passwordLine = (isPrivilegedUser && user.temporaryPassword) 
             ? `<p style="margin: 5px 0;"><strong>Initial Password:</strong> <code style="background:#e9ecef;padding:2px 6px;border-radius:4px">${user.temporaryPassword}</code></p>` 
             : '';
 
-        const loginInstructions = isSuperAdmin 
-            ? `<p>Please log in using your email and the initial password provided above at the Super Admin portal.</p>
+        const adminLoginPath = isSuperAdmin ? '/superadmin/login' : '/admin/login';
+        const portalLabel = isSuperAdmin ? 'Super Admin Portal' : 'Admin Portal';
+
+        const loginInstructions = isPrivilegedUser
+            ? `<p>Please log in using your email and the initial password provided above at the ${portalLabel}.</p>
                <p style="text-align: center; margin: 30px 0;">
-                   <a href="${APP_URL}/superadmin/login" style="background-color: #3B82F6; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Go to Super Admin Portal</a>
+                   <a href="${APP_URL}${adminLoginPath}" style="background-color: #3B82F6; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Go to ${portalLabel}</a>
                </p>
                <p style="text-align: center; margin-bottom: 30px; font-size: 14px;">
-                   Or visit: <a href="${APP_URL}/superadmin/login" style="color: #1A3673;">${APP_URL}/superadmin/login</a>
+                   Or visit: <a href="${APP_URL}${adminLoginPath}" style="color: #1A3673;">${APP_URL}${adminLoginPath}</a>
                </p>`
             : `<p>You can securely log in using your company Microsoft account via Single Sign-On (SSO).</p>
                <p style="text-align: center; margin: 30px 0;">

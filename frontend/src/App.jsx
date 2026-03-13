@@ -21,6 +21,7 @@ import AdminFeedbackAnalysis from './pages/admin/AdminFeedbackAnalysis';
 import Playground from './pages/Playground';
 import AuthCallback from './pages/AuthCallback';
 import SuperAdminLogin from './pages/superadmin/SuperAdminLogin';
+import AdminLogin from './pages/admin/AdminLogin';
 
 const SuperAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -85,6 +86,12 @@ function App() {
         <Route path="/superadmin/login" element={
           <PublicRoute>
             <SuperAdminLogin />
+          </PublicRoute>
+        } />
+
+        <Route path="/admin/login" element={
+          <PublicRoute>
+            <AdminLogin />
           </PublicRoute>
         } />
 

@@ -26,9 +26,11 @@ const registerUser = async (name, email, password, roles, entity, level, status,
     }
 
     const isSuperAdmin = normalizedRoles.includes('superAdmin');
+    const isAdmin = normalizedRoles.includes('admin');
+    const isPrivilegedUser = isSuperAdmin || isAdmin;
 
-    // Either take the provided password from frontend (if modifying later) or generate one
-    const userPassword = password || (isSuperAdmin ? crypto.randomBytes(8).toString('hex') : undefined);
+    // Either take the provided password from frontend (if modifying later) or generate one for privileged users
+    const userPassword = password || (isPrivilegedUser ? crypto.randomBytes(8).toString('hex') : undefined);
     let hashedPassword = undefined;
 
     if (userPassword) {
@@ -51,9 +53,8 @@ const registerUser = async (name, email, password, roles, entity, level, status,
     });
 
     if (user) {
-        // Send welcome email informing them to use SSO
         // Attach the plaintext generated pass temporarily so we can mail it
-        if (isSuperAdmin && userPassword) {
+        if (isPrivilegedUser && userPassword) {
             user.temporaryPassword = userPassword;
         }
 
