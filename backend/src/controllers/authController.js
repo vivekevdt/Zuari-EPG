@@ -39,12 +39,13 @@ const loginUser = async (req, res, next) => {
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-            const roleLabel = user.roles?.includes('superAdmin') ? 'SuperAdmin' : 'Admin';
+            const updatedUser = await User.findByIdAndUpdate(user._id, { $inc: { loginCount: 1 } }, { new: true });
+            const roleLabel = updatedUser.roles?.includes('superAdmin') ? 'SuperAdmin' : 'Admin';
             await createLog(
-                user._id,
-                user.name,
-                user.roles?.join(', ') || 'admin',
-                user.entity,
+                updatedUser._id,
+                updatedUser.name,
+                updatedUser.roles?.join(', ') || 'admin',
+                updatedUser.entity,
                 `${roleLabel} Logged In via Credentials`
             );
 
@@ -52,14 +53,15 @@ const loginUser = async (req, res, next) => {
                 statusCode: 200,
                 success: true,
                 data: {
-                    _id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    gender: user.gender,
-                    roles: user.roles,
-                    entity: user.entity,
-                    is_account_activated: user.is_account_activated,
-                    token: generateToken(user._id, user.name, user.email),
+                    _id: updatedUser._id,
+                    name: updatedUser.name,
+                    email: updatedUser.email,
+                    gender: updatedUser.gender,
+                    roles: updatedUser.roles,
+                    entity: updatedUser.entity,
+                    loginCount: updatedUser.loginCount,
+                    is_account_activated: updatedUser.is_account_activated,
+                    token: generateToken(updatedUser._id, updatedUser.name, updatedUser.email),
                 },
             });
         } else {
@@ -113,7 +115,7 @@ const microsoftLogin = async (req, res, next) => {
         }
 
         // Look up user in our database
-        const user = await User.findOne({ email });
+        let user = await User.findOne({ email });
 
         if (!user) {
             res.status(403);
@@ -122,6 +124,8 @@ const microsoftLogin = async (req, res, next) => {
                 'Please contact your administrator.'
             );
         }
+
+        user = await User.findByIdAndUpdate(user._id, { $inc: { loginCount: 1 } }, { new: true });
 
         // Log the SSO login event
         await createLog(
@@ -142,6 +146,7 @@ const microsoftLogin = async (req, res, next) => {
                 gender: user.gender,
                 roles: user.roles,
                 entity: user.entity,
+                loginCount: user.loginCount,
                 is_account_activated: user.is_account_activated,
                 token: generateToken(user._id, user.name, user.email),
             },

@@ -50,32 +50,26 @@ const EmployeeDashboard = () => {
     };
 
     useEffect(() => {
+        if (!contextUser) return;
+        
         const userEmail = getUserEmail();
-        const visitKey = `dashboard_visits_${userEmail}`;
-        const sessionVisitKey = `session_active_${userEmail}`;
+        const loginCount = contextUser?.loginCount || 0;
         const onboardingKey = `onboarding_completed_${userEmail}`;
-
-        const hasIncrementedSession = sessionStorage.getItem(sessionVisitKey);
-        let visits = parseInt(localStorage.getItem(visitKey) || '0', 10);
-
-        // Increment visit count only once per browser tab session
-        if (!hasIncrementedSession) {
-            visits += 1;
-            localStorage.setItem(visitKey, visits.toString());
-            sessionStorage.setItem(sessionVisitKey, 'true');
-        }
-
         const onboardingCompleted = localStorage.getItem(onboardingKey);
-        const feedbackCompletedKey = `feedback_completed_visit_${visits}_${userEmail}`;
-        const feedbackCompletedForThisVisit = localStorage.getItem(feedbackCompletedKey);
 
+        const feedbackCompletedKey = `feedback_completed_count_${loginCount}_${userEmail}`;
+        const feedbackCompletedForThisCount = localStorage.getItem(feedbackCompletedKey);
 
-        if (!onboardingCompleted && visits === 1) {
+        if (!onboardingCompleted && loginCount === 1) {
             setShowOnboarding(true);
-        } else if (visits > 1 && visits % 3 === 0 && !feedbackCompletedForThisVisit) {
-            setShowPeriodicFeedback(true);
+        } else if (loginCount > 1 && loginCount % 3 === 0 && !feedbackCompletedForThisCount) {
+            const sessionFeedbackSeenKey = `feedback_seen_session_${loginCount}_${userEmail}`;
+            if (!sessionStorage.getItem(sessionFeedbackSeenKey)) {
+                setShowPeriodicFeedback(true);
+                sessionStorage.setItem(sessionFeedbackSeenKey, 'true');
+            }
         }
-    }, []);
+    }, [contextUser]);
 
     const handleOnboardingComplete = () => {
         const userEmail = getUserEmail();
@@ -85,8 +79,8 @@ const EmployeeDashboard = () => {
 
     const handlePeriodicFeedbackSubmit = async (feedbackData) => {
         const userEmail = getUserEmail();
-        const visits = parseInt(localStorage.getItem(`dashboard_visits_${userEmail}`) || '0', 10);
-        localStorage.setItem(`feedback_completed_visit_${visits}_${userEmail}`, 'true');
+        const loginCount = contextUser?.loginCount || 0;
+        localStorage.setItem(`feedback_completed_count_${loginCount}_${userEmail}`, 'true');
 
         try {
             await submitGeneralFeedback({
