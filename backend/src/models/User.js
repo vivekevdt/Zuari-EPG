@@ -67,6 +67,11 @@ const userSchema = new mongoose.Schema(
       default: ["employee"]
     },
 
+    loginCount: {
+      type: Number,
+      default: 0
+    },
+
     status: {
       type: String,
       enum: ["active", "inactive"],
