@@ -10,6 +10,7 @@ import generateChunks from '../utils/generateChunks.js';
 import { loadPDF, loadDOCX } from '../utils/textLoaders.js';
 import { table } from '../db/lancedb.js';
 import embed from '../utils/embeddings.js';
+import { performOCR } from './ocrService.js';
 
 
 
@@ -44,6 +45,24 @@ export const processPolicyFile = async (policy) => {
         let textContent = '';
         if (fs.existsSync(filePath)) {
             textContent = await readFileContent(filePath);
+            
+            // If text extraction failed or returned very little text (likely a scanned document)
+            if (!textContent || textContent.trim().length < 50) {
+                console.log(`Text extraction yielded minimal content (${textContent?.length || 0} chars). Attempting Gemini OCR for ${policy.title}...`);
+                try {
+                    const ocrHtml = await performOCR(filePath);
+                    if (ocrHtml) {
+                        textContent = ocrHtml;
+                    } else {
+                        throw new Error("OCR returned empty result");
+                    }
+                } catch (ocrError) {
+                    console.error("OCR failed:", ocrError.message);
+                    // If OCR failed and we have no useful text content, we should fail the whole process
+                    // so we don't end up with empty chunks and a 'success' status
+                    throw new Error(`OCR failed and original content is insufficient: ${ocrError.message}`);
+                }
+            }
         } else {
             console.warn(`File not found at ${filePath}, using placeholder text.`);
             textContent = `Policy content for ${policy.title} (File missing)`;
@@ -51,8 +70,11 @@ export const processPolicyFile = async (policy) => {
 
         const chunks = await generateChunks(textContent);
 
-        // This processPolicyFile logic seems a bit redundant with storeChunks logic regarding chunk creation
-        // But let's assume storeChunks handles the db operations
+        if (!chunks || chunks.length === 0) {
+            throw new Error(`Failed to generate chunks: content from ${policy.filename} is too short or empty.`);
+        }
+
+        // storeChunks handles updating the policy.chunks record
         await storeChunks(policy._id, chunks);
 
         return true;
