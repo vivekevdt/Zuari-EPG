@@ -51,7 +51,7 @@ const EmployeeDashboard = () => {
 
     useEffect(() => {
         if (!contextUser) return;
-        
+
         const userEmail = getUserEmail();
         const loginCount = contextUser?.loginCount || 0;
         const onboardingKey = `onboarding_completed_${userEmail}`;

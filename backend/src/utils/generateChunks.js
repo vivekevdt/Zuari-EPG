@@ -21,18 +21,20 @@ IMPORTANT:
 Task:
 1. Split document into logical chunks.
 2. Max 400 words per chunk.
-3. Preserve exact wording.
-4. Do NOT summarize or rewrite.
+3. OUTPUT ONLY PLAIN TEXT: Strip all HTML tags, styling, and structural codes.
+4. Preserve exact wording — do NOT summarize or rewrite.
 
 Format:
-
 [
   {
     "heading": "Section title if available else null",
-    "content": "Exact original text"
+    "content": "Exact original text (Plain text only, absolute NO HTML)"
   }
 ]
-`;
+`
+;
+
+
 // Split large docs safely
 function splitIntoBlocks(text, maxWords = 1500) {
   const words = text.split(/\s+/);
@@ -67,13 +69,13 @@ export default async function generateChunks(rawText) {
         ],
         config: {
           temperature: 0.1,
-          maxOutputTokens: 8192,
+          maxOutputTokens: 50000,
           responseMimeType: "application/json",
           responseSchema: {
             type: "array",
             items: {
               type: "object",
-              properties:{
+              properties: {
                 heading: { type: "string", nullable: true },
                 content: { type: "string" }
               },
@@ -117,5 +119,6 @@ export default async function generateChunks(rawText) {
     }
   }
 
-  return finalChunks;
-}  
+  // Filter out any chunks with empty content to avoid validation errors
+  return finalChunks.filter(chunk => chunk.content && chunk.content.trim() !== "");
+}
